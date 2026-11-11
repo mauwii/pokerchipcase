@@ -53,6 +53,15 @@ extension GameState {
             clock.levelEndsAt = now + config.levels[0].duration
             startHand()
 
+        case let .act(player, action):
+            guard phase == .betting else { throw .invalidPhase }
+            guard let i = toActIndex, seats[i].id == player else { throw .notYourTurn }
+            if actor != player {
+                guard actor == hostID else { throw .notYourTurn }
+                guard action == .fold || action == .check else { throw .illegalAction }
+            }
+            try perform(action, by: i)
+
         default:
             throw .invalidPhase
         }
