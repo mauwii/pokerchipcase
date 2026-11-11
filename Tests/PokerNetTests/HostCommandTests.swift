@@ -11,6 +11,7 @@ private struct Table {
     let anna: RawClient
     let ben: RawClient
     let hostID: PlayerID
+    let benWelcome: Welcome
     let version: Int
 
     static func open(onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) async throws -> Table {
@@ -20,10 +21,10 @@ private struct Table {
         let hostID = try await anna.welcome().player
         let ben = try await RawClient.connect(port)
         ben.send(hello("Ben"))
-        _ = try await ben.welcome()
+        let benWelcome = try await ben.welcome()
         let state = try await anna.state { $0.seats.count == 2 }
         _ = try await ben.state { $0.seats.count == 2 }
-        return Table(host: host, port: port, anna: anna, ben: ben, hostID: hostID, version: state.version)
+        return Table(host: host, port: port, anna: anna, ben: ben, hostID: hostID, benWelcome: benWelcome, version: state.version)
     }
 
     func command(_ command: Command, version: Int? = nil) -> ClientMessage {
@@ -76,6 +77,39 @@ struct HostCommandTests {
         t.anna.send(t.command(.startTournament(button: t.hostID)))
         _ = try await t.anna.state { $0.phase == .betting }
         await t.host.stop()
+    }
+
+    @Test func removedPlayerIsDisconnectedAndForgotten() async throws {
+        let t = try await Table.open()
+        t.anna.send(t.command(.removePlayer(player: t.benWelcome.player)))
+        #expect(try await t.ben.error() == WireErrorCode.removed.rawValue)
+        try await t.ben.waitForClose()
+        #expect(await t.host.snapshot.tokens[t.benWelcome.token] == nil)
+        let again = try await RawClient.connect(t.port)
+        again.send(hello("Ben", token: t.benWelcome.token))
+        #expect(try await again.welcome().player != t.benWelcome.player)
+        await t.host.stop()
+    }
+
+    @Test func errorReplyCarriesRequestID() async throws {
+        let t = try await Table.open()
+        let id = UUID()
+        let raw = #"{"id":"\#(id.uuidString)","payload":{"command":{"bogus":{}},"stateVersion":0},"type":"command","v":1}"#
+        t.ben.sendRaw(Data(raw.utf8))
+        let reply = try await t.ben.nextEnvelope { $0.error != nil }
+        #expect(reply.message.error == WireErrorCode.malformed.rawValue && reply.id == id)
+        await t.host.stop()
+    }
+
+    @Test func ensureListeningRestartsAfterListenerFailure() async throws {
+        let (host, port) = try await startHost()
+        await host.simulateListenerFailure()
+        try await eventually { await !host.isListening }
+        try await host.ensureListening()
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben"))
+        _ = try await ben.welcome()
+        await host.stop()
     }
 
     @Test func onChangeAfterCommand() async throws {

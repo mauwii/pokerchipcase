@@ -64,7 +64,7 @@ public enum ServerMessage: Equatable, Sendable {
 
 /// Machine-readable codes sent as the payload of `ServerMessage.error`.
 public enum WireErrorCode: String, Sendable {
-    case versionMismatch, tableFull, gameInProgress, helloRequired, malformed
+    case versionMismatch, tableFull, gameInProgress, helloRequired, malformed, removed
 }
 
 public enum WireError: Error, Equatable {
@@ -124,6 +124,11 @@ public enum Wire {
         case "error": return (h.id, .error(try payload(data)))
         default: throw WireError.unknownType(h.type)
         }
+    }
+
+    /// The envelope `id` of a message, if its header can be read (even when the payload cannot).
+    public static func envelopeID(_ data: Data) -> UUID? {
+        try? decoder.decode(Header.self, from: data).id
     }
 
     private struct Envelope<P: Encodable>: Encodable {

@@ -10,9 +10,13 @@ extension ClientEvent {
 }
 
 private func client(
-    _ port: NWEndpoint.Port, name: String = "Ben", token: String? = nil, code: TableCode = code4711
+    _ port: NWEndpoint.Port, name: String = "Ben", token: String? = nil, code: TableCode = code4711,
+    ackTimeout: Duration = .seconds(10)
 ) async -> (TableClient, EventRecorder<ClientEvent>) {
-    let client = TableClient(endpoint: loopback(port), code: code, name: name, token: token, retryDelay: .milliseconds(100))
+    let client = TableClient(
+        endpoint: loopback(port), code: code, name: name, token: token,
+        retryDelay: .milliseconds(100), ackTimeout: ackTimeout
+    )
     let recorder = EventRecorder(client.events)
     await client.connect()
     return (client, recorder)
@@ -29,12 +33,18 @@ private func table() async throws -> (TableHost, NWEndpoint.Port, TableClient, T
     return (host, port, anna, ben, benEvents)
 }
 
-/// Accepts connections, answers `hello` with welcome + state, never acks; `dropAll()` closes everything.
-private actor SilentHost {
+/// Scripted host: answers `hello` with welcome + state unless `script` returns lines; never acks on its own.
+private actor FakeHost {
+    typealias Script = @Sendable (_ id: UUID, _ message: ClientMessage) -> (lines: [Data], close: Bool)
     private var channels: [MessageChannel] = []
+    private let script: Script
     let listener: NWListener
+    private(set) var hellos = 0
 
-    init() throws { listener = try NWListener(using: PSK.parameters(code: code4711), on: .any) }
+    init(script: @escaping Script = { _, _ in ([], false) }) throws {
+        self.script = script
+        listener = try NWListener(using: PSK.parameters(code: code4711), on: .any)
+    }
 
     func start() async throws -> NWEndpoint.Port {
         listener.newConnectionHandler = { [weak self] connection in Task { await self?.accept(connection) } }
@@ -47,14 +57,27 @@ private actor SilentHost {
         Task {
             do {
                 for try await event in channel.events {
-                    guard case let .message(data) = event, case .hello = try Wire.decodeClient(data).message else { continue }
-                    channel.send(try Wire.encode(ServerMessage.welcome(Welcome(player: "B", token: "t")), id: UUID()))
-                    let state = testSnapshot().game.state
-                    channel.send(try Wire.encode(ServerMessage.state(state), id: UUID()))
+                    guard case let .message(data) = event else { continue }
+                    let (id, message) = try Wire.decodeClient(data)
+                    try self.respond(id, message, on: channel)
                 }
             } catch {}
         }
         channel.start()
+    }
+
+    private func respond(_ id: UUID, _ message: ClientMessage, on channel: MessageChannel) throws {
+        if case .hello = message { hellos += 1 }
+        var (lines, close) = script(id, message)
+        if lines.isEmpty, case .hello = message {
+            lines = [
+                try Wire.encode(ServerMessage.welcome(Welcome(player: "B", token: "t")), id: UUID()),
+                try Wire.encode(ServerMessage.state(testSnapshot().game.state), id: UUID()),
+            ]
+        }
+        for (i, line) in lines.enumerated() {
+            if close && i == lines.count - 1 { channel.sendAndClose(line) } else { channel.send(line) }
+        }
     }
 
     func dropAll() {
@@ -152,7 +175,7 @@ struct ClientTests {
     }
 
     @Test func pendingSendThrowsOnConnectionLoss() async throws {
-        let silent = try SilentHost()
+        let silent = try FakeHost()
         let port = try await silent.start()
         let (ben, events) = await client(port)
         _ = try await events.first { $0.state != nil }
@@ -161,6 +184,62 @@ struct ClientTests {
         await silent.dropAll()
         await #expect(throws: ClientError.connectionLost) { try await pendingSend.value }
         await ben.disconnect()
+    }
+
+    @Test func hostErrorFailsPendingSend() async throws {
+        let fake = try FakeHost { id, message in
+            guard case .command = message else { return ([], false) }
+            return ([try! Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
+        }
+        let port = try await fake.start()
+        let (ben, events) = await client(port)
+        _ = try await events.first { $0.state != nil }
+        await #expect(throws: ClientError.hostError("malformed")) { try await ben.send(.startNextHand) }
+        await ben.disconnect()
+        await fake.dropAll()
+    }
+
+    @Test func newerHostVersionFailsWithoutRetry() async throws {
+        let fake = try FakeHost { _, message in
+            guard case .hello = message else { return ([], false) }
+            let line = #"{"id":"00000000-0000-0000-0000-000000000001","payload":"versionMismatch","type":"error","v":2}"#
+            return ([Data(line.utf8)], true)
+        }
+        let port = try await fake.start()
+        let (ben, events) = await client(port)
+        _ = try await events.first { $0 == .failed(.versionMismatch) }
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(await fake.hellos == 1)
+        await ben.disconnect()
+        await fake.dropAll()
+    }
+
+    @Test func removedPlayerFails() async throws {
+        let (host, _, anna, ben, benEvents) = try await table()
+        let benID = try await benEvents.first { $0.welcome != nil }.welcome!.player
+        #expect(try await anna.send(.removePlayer(player: benID)) == .ok)
+        _ = try await benEvents.first { $0 == .failed(.removed) }
+        await anna.disconnect(); await ben.disconnect(); await host.stop()
+    }
+
+    @Test func eventsFinishAfterFailure() async throws {
+        let (host, port) = try await startHost()
+        let (ben, events) = await client(port, code: TableCode("0815")!)
+        #expect(try await events.waitForEnd() == nil)
+        await ben.disconnect()
+        await host.stop()
+    }
+
+    @Test func sendTimesOutWithoutAckAndReconnects() async throws {
+        let fake = try FakeHost()
+        let port = try await fake.start()
+        let (ben, events) = await client(port, ackTimeout: .milliseconds(300))
+        _ = try await events.first { $0.state != nil }
+        await #expect(throws: ClientError.connectionLost) { try await ben.send(.startNextHand) }
+        _ = try await events.first { $0 == .connectionLost }
+        try await eventually { await fake.hellos == 2 }
+        await ben.disconnect()
+        await fake.dropAll()
     }
 
     @Test func disconnectStopsRetrying() async throws {

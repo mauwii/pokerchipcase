@@ -29,6 +29,10 @@ enum PSK {
         let tcp = NWProtocolTCP.Options()
         tcp.enableKeepalive = true
         tcp.keepaliveIdle = 2
+        // Notice a vanished peer (phone left Wi-Fi, battery died) within seconds, not minutes.
+        tcp.keepaliveInterval = 2
+        tcp.keepaliveCount = 3
+        tcp.connectionDropTime = 10
 
         let parameters = NWParameters(tls: tls, tcp: tcp)
         parameters.includePeerToPeer = true

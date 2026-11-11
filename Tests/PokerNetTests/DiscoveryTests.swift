@@ -43,6 +43,14 @@ struct DiscoveryTests {
         await host.stop()
     }
 
+    @Test func browserReportsDeniedLocalNetwork() {
+        let denied = NWBrowser.State.waiting(.dns(DNSServiceErrorType(kDNSServiceErr_PolicyDenied)))
+        #expect(TableBrowser.status(for: denied) == .localNetworkDenied)
+        #expect(TableBrowser.status(for: .ready) == .browsing)
+        #expect(TableBrowser.status(for: .failed(.posix(.ENETDOWN))) == .failed)
+        #expect(TableBrowser.status(for: .setup) == nil)
+    }
+
     @Test func stoppedHostDisappears() async throws {
         let (host, name) = try await advertisedHost()
         let browser = TableBrowser()

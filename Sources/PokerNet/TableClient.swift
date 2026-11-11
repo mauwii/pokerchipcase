@@ -7,19 +7,22 @@ public enum ClientEvent: Equatable, Sendable {
     case state(GameState)
     /// The connection dropped; the client keeps retrying by itself.
     case connectionLost
-    /// Final: the client gave up.
+    /// Final: the client gave up and `events` finishes.
     case failed(ClientFailure)
 }
 
 public enum ClientFailure: Equatable, Sendable {
-    case wrongCode, versionMismatch, tableFull, gameInProgress
+    case wrongCode, versionMismatch, tableFull, gameInProgress, removed
 }
 
 public enum ClientError: Error, Equatable {
     case notConnected, connectionLost
+    /// The host answered the command with an `error` code instead of an ack.
+    case hostError(String)
 }
 
 /// Connection to a table host: sends commands, waits for their ack and reconnects after drops.
+/// After `.failed` the client is done; create a new one to try again.
 public actor TableClient {
     public nonisolated let events: AsyncStream<ClientEvent>
     public private(set) var token: String?
@@ -30,25 +33,29 @@ public actor TableClient {
     private let code: TableCode
     private let name: String
     private let retryDelay: Duration
+    private let ackTimeout: Duration
     private var channel: MessageChannel?
     private var connected = false
     private var running = false
+    private var gaveUp = false
     /// Bumped for every new connection attempt and on disconnect, so stale channel callbacks are ignored.
     private var generation = 0
     private var pending: [UUID: CheckedContinuation<AckResult, Error>] = [:]
 
+    /// `ackTimeout`: how long `send` waits before treating the connection as dead and reconnecting.
     public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil,
-                retryDelay: Duration = .seconds(1)) {
+                retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10)) {
         self.endpoint = endpoint
         self.code = code
         self.name = name
         self.token = token
         self.retryDelay = retryDelay
+        self.ackTimeout = ackTimeout
         (events, continuation) = AsyncStream.makeStream()
     }
 
     public func connect() {
-        guard !running else { return }
+        guard !running, !gaveUp else { return }
         running = true
         open()
     }
@@ -65,6 +72,10 @@ public actor TableClient {
         let id = UUID()
         let request = CommandRequest(command: command, stateVersion: lastState?.version ?? 0)
         let data = try Wire.encode(ClientMessage.command(request), id: id)
+        Task { [weak self, ackTimeout] in
+            try? await Task.sleep(for: ackTimeout)
+            await self?.ackTimedOut(id)
+        }
         return try await withCheckedThrowingContinuation { continuation in
             pending[id] = continuation
             channel.send(data)
@@ -97,12 +108,16 @@ public actor TableClient {
             let hello = ClientMessage.hello(Hello(protocolVersion: Wire.version, name: name, token: token))
             if let data = try? Wire.encode(hello, id: UUID()) { channel?.send(data) }
         case let .message(data):
-            guard let (_, message) = try? Wire.decodeServer(data) else { return }
-            receive(message)
+            do {
+                let (id, message) = try Wire.decodeServer(data)
+                receive(message, id: id)
+            } catch WireError.versionMismatch {
+                fail(.versionMismatch)
+            } catch {}
         }
     }
 
-    private func receive(_ message: ServerMessage) {
+    private func receive(_ message: ServerMessage, id: UUID) {
         switch message {
         case let .welcome(welcome):
             token = welcome.token
@@ -114,10 +129,12 @@ public actor TableClient {
         case let .ack(ack):
             pending.removeValue(forKey: ack.id)?.resume(returning: ack.result)
         case let .error(code):
+            pending.removeValue(forKey: id)?.resume(throwing: ClientError.hostError(code))
             switch WireErrorCode(rawValue: code) {
             case .versionMismatch: fail(.versionMismatch)
             case .tableFull: fail(.tableFull)
             case .gameInProgress: fail(.gameInProgress)
+            case .removed: fail(.removed)
             default: break
             }
         }
@@ -125,9 +142,21 @@ public actor TableClient {
 
     private func channelEnded(_ error: Error?, attempt: Int) async {
         guard attempt == generation, running else { return }
-        let wasConnected = connected
-        dropChannel()
         if error as? ChannelError == .handshakeFailed { return fail(.wrongCode) }
+        await reconnect()
+    }
+
+    private func ackTimedOut(_ id: UUID) async {
+        guard pending[id] != nil, running else { return }
+        await reconnect()
+    }
+
+    /// Drops the current connection (failing pending sends) and opens a new one after `retryDelay`.
+    private func reconnect() async {
+        let wasConnected = connected
+        generation += 1
+        let attempt = generation
+        dropChannel()
         if wasConnected { continuation.yield(.connectionLost) }
         try? await Task.sleep(for: retryDelay)
         guard running, attempt == generation else { return }
@@ -136,9 +165,11 @@ public actor TableClient {
 
     private func fail(_ failure: ClientFailure) {
         running = false
+        gaveUp = true
         generation += 1
         dropChannel()
         continuation.yield(.failed(failure))
+        continuation.finish()
     }
 
     private func dropChannel() {

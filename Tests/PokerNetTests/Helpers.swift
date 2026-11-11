@@ -109,12 +109,19 @@ final class RawClient: Sendable {
 
     /// Next server message matching `predicate` (older ones are discarded).
     func next(where predicate: @escaping @Sendable (ServerMessage) -> Bool) async throws -> ServerMessage {
+        try await nextEnvelope(where: predicate).message
+    }
+
+    /// Like `next`, but also returns the envelope `id`.
+    func nextEnvelope(
+        where predicate: @escaping @Sendable (ServerMessage) -> Bool
+    ) async throws -> (id: UUID, message: ServerMessage) {
         let event = try await recorder.take {
             guard case let .message(d) = $0, let m = try? Wire.decodeServer(d).message else { return false }
             return predicate(m)
         }
         guard case let .message(d) = event else { throw TimeoutError() }
-        return try Wire.decodeServer(d).message
+        return try Wire.decodeServer(d)
     }
 
     func welcome() async throws -> Welcome { try await next { $0.welcome != nil }.welcome! }
