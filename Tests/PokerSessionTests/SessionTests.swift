@@ -110,7 +110,13 @@ struct SessionTests {
         // Crash without leave().
         await anna.tableHost!.stop()
         await anna.client.disconnect()
-        let resumed = try await TableSession.host(snap, saveFile: file, port: port)
+        // stop() cancels the listener asynchronously; the old port can stay taken for a moment (EADDRINUSE on CI).
+        var rebound: TableSession?
+        for _ in 0..<50 where rebound == nil {
+            rebound = try? await TableSession.host(snap, saveFile: file, port: port)
+            if rebound == nil { try await Task.sleep(for: .milliseconds(100)) }
+        }
+        let resumed = try #require(rebound)
         defer { Task { await resumed.leave() } }
         try await eventually { resumed.state?.phase == .betting && resumed.me == snap.game.state.hostID }
         // ben still shows .connected until it notices the drop; only the new host proves the reconnect.
