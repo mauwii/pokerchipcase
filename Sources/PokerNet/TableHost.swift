@@ -96,8 +96,9 @@ public actor TableHost {
         } catch {
             return send(.ack(Ack(id: messageID, result: .rejected(reason: error))), to: id)
         }
-        send(.ack(Ack(id: messageID, result: .ok)), to: id)
+        // State before ack: when a client's send returns, it already knows the new state version.
         broadcastState()
+        send(.ack(Ack(id: messageID, result: .ok)), to: id)
         onChange(snapshot)
     }
 

@@ -149,9 +149,11 @@ Client                          Host
   | <------------------ welcome  |
   | <-------------------- state  |
   | -- command ----------------> |
-  | <---------------------- ack  |
   | <-------------------- state  |   (to everyone)
+  | <---------------------- ack  |
 ```
+
+On success the host sends the new `state` before the `ack`, so a client that waits for the `ack` already knows the new `version`.
 
 ## Versions
 
