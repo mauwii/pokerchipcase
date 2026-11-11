@@ -76,9 +76,7 @@ Details in `docs/PROTOCOL.md`. Jede Nachricht ist JSON mit Umschlag:
 
 Client → Host:
 - `hello` – Protokollversion, Name, optional Reconnect-Token
-- `action` – Fold/Check/Call/Bet/Raise/All-in mit Betrag
-- `showdownResult` – pro Pot die Gewinner-Sitzplätze (nur vom Dealer der Hand akzeptiert)
-- `hostCommand` – Spiel starten, pausieren, fortsetzen, rückgängig, für abwesenden Spieler folden/checken, Spieler entfernen (nur vom Host-Client akzeptiert)
+- `command` – jeder Spielbefehl: Aktionen (Fold/Check/Call/Bet/Raise/All-in), Showdown-Ergebnis, Host-Befehle (starten, pausieren, fortsetzen, rückgängig, für abwesenden Spieler folden/checken, Spieler entfernen). Wer welchen Befehl senden darf, prüft `PokerCore`.
 
 Host → Client:
 - `welcome` – Token und Sitzplatz

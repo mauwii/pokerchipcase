@@ -39,6 +39,6 @@ import Testing
 @Test func gameRoundTripsThroughJSON() throws {
     var g = try Game.started()
     try g.act(.raiseTo(amount: 100))
-    let data = try JSONEncoder().encode(g)
-    #expect(try JSONDecoder().decode(Game.self, from: data) == g)
+    let data = try Wire.encoder.encode(g)
+    #expect(try Wire.decoder.decode(Game.self, from: data) == g)
 }
