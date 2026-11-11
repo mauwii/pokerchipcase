@@ -16,6 +16,12 @@ public struct Game: Codable, Equatable, Sendable {
 
     /// Wendet einen Befehl atomar an: bei einer `Rejection` bleibt das Spiel unverändert.
     public mutating func apply(_ command: Command, by actor: PlayerID, at now: Date) throws(Rejection) {
+        if command == .undo {
+            guard actor == state.hostID else { throw .notHost }
+            guard let previous = history.popLast() else { throw .nothingToUndo }
+            state = previous
+            return
+        }
         var next = state
         try next.apply(command, by: actor, at: now)
         history.append(state)
