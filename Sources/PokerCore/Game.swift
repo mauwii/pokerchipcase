@@ -73,7 +73,7 @@ extension GameState {
 
         case let .resolveShowdown(winners):
             guard phase == .showdown else { throw .invalidPhase }
-            guard actor == dealerID else { throw .notDealer }
+            guard actor == dealerID || actor == hostID else { throw .notDealer }
             try resolveShowdown(winners)
 
         case .startNextHand:

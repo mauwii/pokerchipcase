@@ -24,10 +24,18 @@ import Testing
     #expect(g.state.seat("B")?.stack == 900 && g.state.seat("C")?.stack == 1400 && g.state.seat("A")?.stack == 0)
 }
 
-@Test func onlyDealerMayResolve() throws {
+@Test func onlyDealerOrHostMayResolve() throws {
     var g = try Game.started(["B": 1000, "A": 1000, "C": 1000])   // Host B, Dealer A
     try g.act(.call); try g.act(.call); try g.checkDown()
-    #expect(throws: Rejection.notDealer) { try g.apply(.resolveShowdown(winners: [["C"]]), by: "B", at: t0) }
+    #expect(throws: Rejection.notDealer) { try g.apply(.resolveShowdown(winners: [["C"]]), by: "C", at: t0) }
+}
+
+@Test func hostResolvesWhenDealerWasRemoved() throws {
+    var g = try Game.started(["B": 1000, "A": 1000, "C": 1000])   // Host B, Dealer A
+    try g.apply(.removePlayer(player: "A"), by: "B", at: t0)
+    try g.checkDown()
+    try g.apply(.resolveShowdown(winners: [["C"]]), by: "B", at: t0)
+    #expect(g.state.phase == .handComplete)
 }
 
 @Test func showdownWinnersValidated() throws {
