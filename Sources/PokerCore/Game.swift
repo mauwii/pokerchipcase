@@ -40,9 +40,12 @@ extension GameState {
         case let .removePlayer(player):
             guard actor == hostID else { throw .notHost }
             guard player != hostID else { throw .illegalAction }
-            guard let i = index(of: player) else { throw .unknownPlayer }
-            guard phase == .lobby else { throw .invalidPhase }
-            seats.remove(at: i)
+            guard let i = index(of: player), !seats[i].isEliminated else { throw .unknownPlayer }
+            if phase == .lobby {
+                seats.remove(at: i)
+            } else {
+                try removeFromGame(seat: i)
+            }
 
         case let .startTournament(button):
             try requireLobbyHost(actor)
@@ -66,6 +69,11 @@ extension GameState {
             guard phase == .showdown else { throw .invalidPhase }
             guard actor == dealerID else { throw .notDealer }
             try resolveShowdown(winners)
+
+        case .startNextHand:
+            guard phase == .handComplete else { throw .invalidPhase }
+            guard actor == dealerID || actor == hostID else { throw .notDealer }
+            startNextHand()
 
         default:
             throw .invalidPhase

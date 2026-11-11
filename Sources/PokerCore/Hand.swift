@@ -197,6 +197,54 @@ extension GameState {
         pots = []
         toActIndex = nil
         phase = .handComplete
+        eliminateBusted()
+    }
+
+    /// Spieler ohne Chips scheiden aus; bei mehreren platziert sich besser, wer zu Handbeginn mehr hatte.
+    mutating func eliminateBusted() {
+        let remaining = activeSeatCount
+        let busted = seats.indices
+            .filter { !seats[$0].isEliminated && seats[$0].stack == 0 }
+            .sorted { seats[$0].stackAtHandStart > seats[$1].stackAtHandStart }
+        for (k, j) in busted.enumerated() {
+            seats[j].eliminatedRank = remaining - busted.count + 1 + k
+        }
+        if activeSeatCount <= 1 { phase = .finished }
+    }
+
+    /// Sieger bzw. noch Spielende zuerst (nach Stack), dann Ausgeschiedene nach Platzierung.
+    public var ranking: [Seat] {
+        seats.sorted {
+            switch ($0.eliminatedRank, $1.eliminatedRank) {
+            case (nil, nil): $0.stack > $1.stack
+            case (nil, _): true
+            case (_, nil): false
+            case let (a?, b?): a < b
+            }
+        }
+    }
+
+    mutating func startNextHand() {
+        buttonIndex = nextActive(after: buttonIndex!)
+        handNumber += 1
+        startHand()
+    }
+
+    /// Entfernt einen Spieler aus dem laufenden Turnier; seine Chips verfallen.
+    mutating func removeFromGame(seat i: Int) throws(Rejection) {
+        switch phase {
+        case .betting:
+            seats[i].folded = true
+            seats[i].stack = 0
+            if toActIndex == i || seats.count(where: { !$0.folded }) == 1 {
+                afterAction(by: i)
+            }
+        case .handComplete:
+            seats[i].stack = 0
+            eliminateBusted()
+        default:
+            throw .invalidPhase
+        }
     }
 }
 
