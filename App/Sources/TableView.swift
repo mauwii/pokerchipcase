@@ -89,7 +89,9 @@ struct TableView: View {
     @ViewBuilder private var bottom: some View {
         switch state.phase {
         case .betting: ActionBar(session: session, state: state)
-        default: Text(state.phase.rawValue) // replaced in Task 8
+        case .showdown: ShowdownView(session: session, state: state)
+        case .handComplete: NextHandBar(session: session, state: state)
+        default: EmptyView()
         }
     }
 }

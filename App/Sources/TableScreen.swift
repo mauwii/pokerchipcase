@@ -23,6 +23,8 @@ struct TableScreen: View {
                 if let state = session.state {
                     if state.phase == .lobby {
                         LobbyView(session: session, state: state)
+                    } else if state.phase == .finished {
+                        RankingView(session: session, state: state, onLeave: onLeave)
                     } else {
                         TableView(session: session, state: state)
                     }
