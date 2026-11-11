@@ -1,40 +1,42 @@
-# PokerCore Implementation Plan (Plan 1 von 3)
+# PokerCore Implementation Plan (plan 1 of 3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Swift Package `PokerChipCase` mit dem Target `PokerCore`: vollständige, getestete Turnier-Spiellogik für No-Limit Texas Hold'em plus die Wire-Protokoll-Typen, gebaut in CI.
+> **Status:** executed in PR #1. The final review added fixes beyond this plan: chip conservation (lone matched player is not asked to act, dead chips go to the top pot), `GameState.version` / `stateVersion` against stale double taps, and the host as a fallback for `resolveShowdown`.
 
-**Architecture:** `Game` ist ein `Codable`-Werttyp mit dem aktuellen `GameState` und der Historie. Jede Änderung läuft über `Game.apply(_:by:at:)`: der Befehl wird autorisiert und validiert und dann atomar angewendet, oder er wirft eine `Rejection` und der Zustand bleibt unverändert. Zeit kommt als Parameter herein, Zufall gibt es im Kern nicht – damit sind alle Tests deterministisch.
+**Goal:** Swift package `PokerChipCase` with the target `PokerCore`: complete, tested tournament logic for No-Limit Texas Hold'em plus the wire protocol types, built in CI.
 
-**Tech Stack:** Swift 6 (Language Mode 6), Swift Package Manager, Swift Testing (`import Testing`), Foundation. Keine externen Abhängigkeiten.
+**Architecture:** `Game` is a `Codable` value type holding the current `GameState` and the history. Every change goes through `Game.apply(_:by:at:)`: the command is authorized, validated and applied atomically, or it throws a `Rejection` and the state stays unchanged. Time comes in as a parameter and there is no randomness in the core, so all tests are deterministic.
+
+**Tech Stack:** Swift 6 (language mode 6), Swift Package Manager, Swift Testing (`import Testing`), Foundation. No external dependencies.
 
 **Spec:** `docs/superpowers/specs/2026-11-11-pokerchipcase-design.md`
 
-**Folgepläne:** Plan 2 `PokerNet` (Host/Client, TLS-PSK, Bonjour), Plan 3 App (SwiftUI, XcodeGen, App-Build in CI).
+**Follow-up plans:** plan 2 `PokerNet` (host/client, TLS-PSK, Bonjour), plan 3 app (SwiftUI, XcodeGen, app build in CI).
 
 ## Global Constraints
 
-- Plattformen im Package: `.iOS(.v17)`, `.macOS(.v14)`; `swift-tools-version: 6.0`
-- Keine externen Dependencies
-- Alle öffentlichen Typen sind `Sendable`, `Codable`, `Equatable`
-- Beträge sind ganzzahlige Chips (`Int`), keine Stückelung
-- Max. 10 Spieler pro Tisch, min. 2 zum Start
-- Lizenz MIT
-- Kein Zufall und keine Systemuhr in `PokerCore`
+- Package platforms: `.iOS(.v17)`, `.macOS(.v14)`; `swift-tools-version: 6.0`
+- No external dependencies
+- All public types are `Sendable`, `Codable`, `Equatable`
+- Amounts are integer chips (`Int`), no denominations
+- At most 10 players per table, at least 2 to start
+- License MIT
+- No randomness and no system clock in `PokerCore`
 
 ## Review Focus
 
-1. **Short-Stack im Big Blind:** Spieler mit weniger als dem Big Blind ist nach dem Posten all-in; die anderen müssen trotzdem den vollen Big Blind callen → Test `shortStackedBigBlindIsAllIn` (Task 2).
-2. **Doppeltipp / Aktion außer der Reihe:** gleiche Aktion zweimal gesendet → zweite wird mit `notYourTurn` abgelehnt, Zustand unverändert → `outOfTurnRejectedAndStateUnchanged`, `doubleTapRejected` (Task 3).
-3. **Alle all-in vor dem River:** keine Setzrunde mehr möglich → sofort Showdown, ungecallter Überschuss zurück → `onlyOnePlayerLeftToActRunsOut` (Task 5).
-4. **Zwei Spieler scheiden in derselben Hand aus:** wer zu Handbeginn mehr Chips hatte, platziert sich besser → `twoEliminatedSameHandRankedByStartingStack` (Task 7).
-5. **Vertippt beim Showdown:** Rückgängig nach der Auszahlung stellt alle Stacks exakt wieder her → `undoAfterShowdownRestoresChips` (Task 9).
+1. **Short stack in the big blind:** a player with less than the big blind is all-in after posting; the others still have to call the full big blind → test `shortStackedBigBlindIsAllIn` (Task 2).
+2. **Double tap / acting out of turn:** the same action sent twice → the second is rejected with `notYourTurn`, state unchanged → `outOfTurnRejectedAndStateUnchanged`, `doubleTapRejected` (Task 3).
+3. **Everyone all-in before the river:** no betting round possible → immediate showdown, uncalled excess returned → `onlyOnePlayerLeftToActRunsOut` (Task 5).
+4. **Two players eliminated in the same hand:** whoever had more chips at hand start places better → `twoEliminatedSameHandRankedByStartingStack` (Task 7).
+5. **Mistake at showdown:** undo after the payout restores all stacks exactly → `undoAfterShowdownRestoresChips` (Task 9).
 
 ---
 
-## Dateistruktur
+## File Structure
 
-```
+```text
 Package.swift
 LICENSE
 .gitignore
@@ -42,11 +44,11 @@ LICENSE
 Sources/PokerCore/
   Types.swift       Chips, PlayerID, BlindLevel, TournamentConfig, Seat, Phase, Street, Pot, BlindClock, GameState
   Command.swift     Command, Action, Rejection
-  Game.swift        Game, apply-Dispatch, Autorisierung, Lobby-Befehle, Historie/Undo
-  Hand.swift        Hand starten, Blinds, Setzrunden, Straßenwechsel, Showdown, Handende  (extension GameState)
-  Pots.swift        computePots, Verteilung mit Restchip
-  Clock.swift       Blind-Level-Uhr
-  Wire.swift        Protokoll-Nachrichten, Encoder/Decoder
+  Game.swift        Game, apply dispatch, authorization, lobby commands, history/undo
+  Hand.swift        hand start, blinds, betting rounds, street changes, showdown, hand end  (extension GameState)
+  Pots.swift        computePots, payout with odd chip
+  Clock.swift       blind level clock
+  Wire.swift        protocol messages, encoder/decoder
 Tests/PokerCoreTests/
   Helpers.swift
   LobbyTests.swift  HandStartTests.swift  BettingTests.swift  AllInTests.swift
@@ -57,7 +59,7 @@ docs/PROTOCOL.md
 
 ---
 
-### Task 1: Package-Gerüst, Typen, Lobby, CI
+### Task 1: Package scaffold, types, lobby, CI
 
 **Files:**
 - Create: `Package.swift`, `LICENSE`, `.gitignore`, `.github/workflows/ci.yml`, `Sources/PokerCore/Types.swift`, `Sources/PokerCore/Command.swift`, `Sources/PokerCore/Game.swift`
@@ -72,8 +74,8 @@ docs/PROTOCOL.md
   public struct BlindLevel { public var smallBlind: Chips; public var bigBlind: Chips; public var duration: TimeInterval }
   public struct TournamentConfig {
       public var startingStack: Chips; public var levels: [BlindLevel]
-      public static let relaxed: TournamentConfig   // "Gemütlich – 20 Min"
-      public static let quick: TournamentConfig     // "Schnell – 10 Min"
+      public static let relaxed: TournamentConfig   // "Relaxed – 20 min"
+      public static let quick: TournamentConfig     // "Quick – 10 min"
       public static let presets: [(name: String, config: TournamentConfig)]
   }
   public struct Seat {
@@ -120,13 +122,13 @@ docs/PROTOCOL.md
       public mutating func apply(_ command: Command, by actor: PlayerID, at now: Date) throws(Rejection)
   }
   ```
-  Alle Typen: `Codable, Equatable, Sendable`.
+  All types: `Codable, Equatable, Sendable`.
 
-- [ ] **Step 1: Package anlegen**
+- [ ] **Step 1: Create the package**
 
-`Package.swift`: Package `PokerChipCase`, Library-Produkt `PokerCore`, Target `PokerCore`, Test-Target `PokerCoreTests`, Plattformen laut Global Constraints. `.gitignore`: `.build/`, `.swiftpm/`, `DerivedData/`, `*.xcodeproj`, `.DS_Store`. `LICENSE`: MIT, Jahr 2026, Inhaber = `git config user.name`.
+`Package.swift`: package `PokerChipCase`, library product `PokerCore`, target `PokerCore`, test target `PokerCoreTests`, platforms per Global Constraints. `.gitignore`: `.build/`, `.swiftpm/`, `DerivedData/`, `*.xcodeproj`, `.DS_Store`. `LICENSE`: MIT, year 2026, holder = `git config user.name`.
 
-- [ ] **Step 2: Failing Tests schreiben** (`LobbyTests.swift`, `@testable import PokerCore`, `let t0 = Date(timeIntervalSince1970: 0)`)
+- [ ] **Step 2: Write failing tests** (`LobbyTests.swift`, `@testable import PokerCore`, `let t0 = Date(timeIntervalSince1970: 0)`)
 
 ```swift
 @Test func hostIsSeatedOnCreation() {
@@ -142,27 +144,27 @@ docs/PROTOCOL.md
 }
 @Test func onlyHostMayAddPlayers()       // join by "B" → .notHost
 @Test func duplicatePlayerRejected()     // join "A" again → .duplicatePlayer
-@Test func tableFullAtTen()              // 10 Sitze, 11. join → .tableFull
-@Test func arrangeSeatsReorders()        // order ["B","A"] → seats ["B","A"]; order mit fremder/fehlender ID → .unknownPlayer
-@Test func removePlayerInLobby()         // remove "B" → seats ["A"]; remove "A" (Host) → .illegalAction
+@Test func tableFullAtTen()              // 10 seats, 11th join → .tableFull
+@Test func arrangeSeatsReorders()        // order ["B","A"] → seats ["B","A"]; order with unknown/missing ID → .unknownPlayer
+@Test func removePlayerInLobby()         // remove "B" → seats ["A"]; remove "A" (host) → .illegalAction
 @Test func presetsStartAtTenTwenty() {
     #expect(TournamentConfig.relaxed.levels.first == BlindLevel(smallBlind: 10, bigBlind: 20, duration: 1200))
     #expect(TournamentConfig.quick.levels.first?.duration == 600)
-    #expect(TournamentConfig.presets.map(\.name) == ["Gemütlich – 20 Min", "Schnell – 10 Min"])
+    #expect(TournamentConfig.presets.map(\.name) == ["Relaxed – 20 min", "Quick – 10 min"])
 }
 ```
 
-- [ ] **Step 3: Run** `swift test` → Expected: Compile-Fehler (Typen fehlen)
+- [ ] **Step 3: Run** `swift test` → Expected: compile error (types missing)
 
-- [ ] **Step 4: Implementieren**
+- [ ] **Step 4: Implement**
 
-Typen und Enums wie oben. Presets: `startingStack` 1000, Levels SB/BB `10/20, 15/30, 25/50, 50/100, 75/150, 100/200, 150/300, 200/400, 300/600, 500/1000`; `relaxed` je 1200 s, `quick` je 600 s. `join` setzt `stack = config.startingStack`. `apply` arbeitet auf einer Kopie und weist erst bei Erfolg zu; vor jedem erfolgreichen Befehl außer `.undo` wird der alte `state` an `history` angehängt (Undo-Logik selbst kommt in Task 9 – hier reicht das Anhängen). Lobby-Befehle nur in `.lobby`, sonst `.invalidPhase` (Ausnahme `removePlayer`, siehe Task 7). Noch nicht implementierte Befehle werfen vorerst `.invalidPhase`.
+Types and enums as above. Presets: `startingStack` 1000, SB/BB levels `10/20, 15/30, 25/50, 50/100, 75/150, 100/200, 150/300, 200/400, 300/600, 500/1000`; `relaxed` 1200 s each, `quick` 600 s each. `join` sets `stack = config.startingStack`. `apply` works on a copy and assigns only on success; before every successful command except `.undo` the old `state` is appended to `history` (the undo logic itself comes in Task 9 – appending is enough here). Lobby commands only in `.lobby`, otherwise `.invalidPhase` (exception `removePlayer`, see Task 7). Commands not implemented yet throw `.invalidPhase` for now.
 
-- [ ] **Step 5: Run** `swift test` → Expected: alle Tests PASS
+- [ ] **Step 5: Run** `swift test` → Expected: all tests PASS
 
 - [ ] **Step 6: CI**
 
-`.github/workflows/ci.yml`: Trigger `push` und `pull_request`, Job auf `macos-latest`, Steps `actions/checkout@v4`, `swift test`.
+`.github/workflows/ci.yml`: triggers `push` and `pull_request`, job on `macos-latest`, steps `actions/checkout@v4`, `swift test`.
 
 - [ ] **Step 7: Commit**
 
@@ -173,36 +175,36 @@ git commit -m "feat(core): package scaffold, types, lobby commands, CI"
 
 ---
 
-### Task 2: Turnierstart und Handbeginn
+### Task 2: Tournament start and hand start
 
 **Files:**
 - Create: `Sources/PokerCore/Hand.swift`, `Tests/PokerCoreTests/Helpers.swift`
-- Modify: `Sources/PokerCore/Game.swift` (Dispatch `startTournament`)
+- Modify: `Sources/PokerCore/Game.swift` (dispatch `startTournament`)
 - Test: `Tests/PokerCoreTests/HandStartTests.swift`
 
 **Interfaces:**
 - Consumes: Task 1
 - Produces:
-  - `extension GameState { mutating func startHand() }` – setzt Hand-Felder zurück, postet Blinds, bestimmt `toActIndex`
-  - `public var dealerID: PlayerID?` (Spieler auf `buttonIndex`)
+  - `extension GameState { mutating func startHand() }` – resets hand fields, posts blinds, sets `toActIndex`
+  - `public var dealerID: PlayerID?` (player at `buttonIndex`)
   - `public var currentLevel: BlindLevel`
-  - `public var potTotal: Chips` (Summe aller `handBet`)
+  - `public var potTotal: Chips` (sum of all `handBet`)
   - `public var minRaiseTo: Chips { currentBet + lastRaiseSize }`
-  - Test-Helper in `Helpers.swift`:
+  - Test helpers in `Helpers.swift`:
     ```swift
     let t0 = Date(timeIntervalSince1970: 0)
     let tenTwenty = [BlindLevel(smallBlind: 10, bigBlind: 20, duration: 600)]
     extension Game {
-        /// Host = erster Spieler. Stacks werden in der Lobby gesetzt, dann startTournament(button:) bei t0.
+        /// Host = first player. Stacks are set in the lobby, then startTournament(button:) at t0.
         static func started(_ stacks: KeyValuePairs<PlayerID, Chips> = ["A": 1000, "B": 1000, "C": 1000],
                             levels: [BlindLevel] = tenTwenty, button: PlayerID = "A") throws -> Game
-        /// Wendet act(player: toAct, action:) an.
+        /// Applies act(player: toAct, action:).
         mutating func act(_ action: Action, at now: Date = t0) throws(Rejection)
         var toAct: PlayerID? { get }
     }
     ```
 
-- [ ] **Step 1: Failing Tests**
+- [ ] **Step 1: Failing tests**
 
 ```swift
 @Test func threeHandedBlindsAndFirstToAct() throws {
@@ -224,7 +226,7 @@ git commit -m "feat(core): package scaffold, types, lobby commands, CI"
     #expect(g.state.seat("C")?.roundBet == 15 && g.state.seat("C")?.allIn == true)
     #expect(g.state.currentBet == 20)
 }
-@Test func startRequiresTwoPlayers()     // nur Host → .tooFewPlayers
+@Test func startRequiresTwoPlayers()     // host only → .tooFewPlayers
 @Test func startRequiresHost()           // startTournament by "B" → .notHost
 @Test func startWithUnknownButton()      // button "Z" → .unknownPlayer
 @Test func clockStartsAtTournamentStart() throws {
@@ -235,35 +237,35 @@ git commit -m "feat(core): package scaffold, types, lobby commands, CI"
 
 - [ ] **Step 2: Run** `swift test --filter HandStartTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-Positionsregeln: Bei ≥3 aktiven Spielern ist SB der nächste nicht ausgeschiedene Sitz nach dem Button, BB der nächste danach, zuerst handelt der nächste nach dem BB. Heads-up: Button = SB und handelt preflop zuerst. Blind posten = `min(blind, stack)`; Stack 0 → `allIn = true`. `currentBet = currentLevel.bigBlind` (nominal, auch bei Short-BB), `lastRaiseSize = bigBlind`. Alle Sitze: `acted = false`, `mayRaise = true`, `folded = false`, `stackAtHandStart = stack` (vor dem Posten). `toActIndex` überspringt All-in-Sitze. `startTournament`: Host-only, `.lobby`, ≥2 Sitze, Button muss existieren; setzt `clock.levelEndsAt = now + levels[0].duration`, `handNumber = 1`, ruft `startHand()`.
+Position rules: with ≥3 active players the SB is the next non-eliminated seat after the button, the BB the one after that, and the next one after the BB acts first. Heads-up: button = SB and acts first preflop. Posting a blind = `min(blind, stack)`; stack 0 → `allIn = true`. `currentBet = currentLevel.bigBlind` (nominal, even with a short BB), `lastRaiseSize = bigBlind`. All seats: `acted = false`, `mayRaise = true`, `folded = false`, `stackAtHandStart = stack` (before posting). `toActIndex` skips all-in seats. `startTournament`: host only, `.lobby`, ≥2 seats, button must exist; sets `clock.levelEndsAt = now + levels[0].duration`, `handNumber = 1`, calls `startHand()`.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
-- [ ] **Step 5: Commit** `git commit -am "feat(core): tournament start, blinds, first to act"` (neue Dateien vorher `git add`)
+- [ ] **Step 5: Commit** `git commit -am "feat(core): tournament start, blinds, first to act"` (`git add` new files first)
 
 ---
 
-### Task 3: Setzrunden
+### Task 3: Betting rounds
 
 **Files:**
-- Modify: `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift` (Dispatch `act`)
+- Modify: `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift` (dispatch `act`)
 - Test: `Tests/PokerCoreTests/BettingTests.swift`
 
 **Interfaces:**
-- Consumes: Task 2 (`startHand`, Helpers)
+- Consumes: Task 2 (`startHand`, helpers)
 - Produces:
   ```swift
   public struct LegalActions: Equatable, Sendable {
-      public var canCheck: Bool; public var callAmount: Chips   // zusätzliche Chips zum Callen, 0 wenn check möglich
-      public var minRaiseTo: Chips?; public var maxRaiseTo: Chips?   // nil = Raise nicht erlaubt
+      public var canCheck: Bool; public var callAmount: Chips   // additional chips to call, 0 if check is possible
+      public var minRaiseTo: Chips?; public var maxRaiseTo: Chips?   // nil = raising not allowed
   }
-  extension GameState { public func legalActions(for player: PlayerID) -> LegalActions? }  // nil wenn nicht dran
+  extension GameState { public func legalActions(for player: PlayerID) -> LegalActions? }  // nil if not their turn
   extension GameState { mutating func perform(_ action: Action, by seat: Int) throws(Rejection) }
   ```
 
-- [ ] **Step 1: Failing Tests** (Standard: A, B, C je 1000, Button A, SB B, BB C)
+- [ ] **Step 1: Failing tests** (default: A, B, C with 1000 each, button A, SB B, BB C)
 
 ```swift
 @Test func legalActionsAtStart() throws {
@@ -308,34 +310,34 @@ Positionsregeln: Bei ≥3 aktiven Spielern ist SB der nächste nicht ausgeschied
     #expect(throws: Rejection.notYourTurn) { try g.apply(.act(player: "A", action: .call), by: "A", at: t0) }
 }
 @Test func hostMayFoldOrCheckForOthersOnly() throws {
-    var g = try Game.started(); try g.act(.call)          // A callt, B ist dran
+    var g = try Game.started(); try g.act(.call)          // A calls, B to act
     #expect(throws: Rejection.illegalAction) { try g.apply(.act(player: "B", action: .call), by: "A", at: t0) }
     try g.apply(.act(player: "B", action: .fold), by: "A", at: t0)
     #expect(g.state.seat("B")?.folded == true)
 }
-@Test func nonHostMayNotActForOthers()        // nach A call: act(player "B") by "C" → .notYourTurn
+@Test func nonHostMayNotActForOthers()        // after A calls: act(player "B") by "C" → .notYourTurn
 @Test func riverCompletesToShowdown() throws {
     var g = try Game.started(); try g.act(.call); try g.act(.call); try g.act(.check)
-    for _ in 0..<9 { try g.act(.check) }          // Flop, Turn, River
+    for _ in 0..<9 { try g.act(.check) }          // flop, turn, river
     #expect(g.state.phase == .showdown && g.state.street == .river)
     #expect(g.state.pots == [Pot(amount: 60, eligible: ["A", "B", "C"])])
 }
-@Test func actOutsideBettingRejected()        // nach foldToOne: act → .invalidPhase
+@Test func actOutsideBettingRejected()        // after foldToOne: act → .invalidPhase
 ```
 
 - [ ] **Step 2: Run** `swift test --filter BettingTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-Autorisierung in `Game.apply`, in dieser Reihenfolge: `phase != .betting` → `.invalidPhase`; `player` sitzt nicht auf `toActIndex` → `.notYourTurn`; `actor != player` und `actor != hostID` → `.notYourTurn`; `actor == hostID != player` mit Aktion außer fold/check → `.illegalAction`. Regeln:
-- `check`: nur wenn `roundBet == currentBet`, sonst `.illegalAction`
-- `call`: nur wenn `currentBet > roundBet`; zahlt `min(diff, stack)`, Stack 0 → all-in
-- `raiseTo(x)`: nur wenn `mayRaise`, sonst `.illegalAction`; `minRaiseTo ≤ x ≤ roundBet + stack`, sonst `.invalidAmount`; `x == roundBet + stack` → all-in
-- volles Raise: `lastRaiseSize = x - currentBet`, `currentBet = x`, alle anderen aktiven Sitze `acted = false`, `mayRaise = true`
-- `fold`: `folded = true`; bleibt nur ein nicht gefoldeter Sitz übrig → er bekommt `potTotal`, `phase = .handComplete` (Handende-Logik Task 7)
-- Nächster am Zug: nächster Sitz, der nicht gefoldet, nicht all-in, nicht ausgeschieden ist und (`!acted` oder `roundBet < currentBet`). Gibt es keinen, ist die Runde vorbei.
-- Rundenende: River → Showdown; sonst nächste Straße mit `currentBet = 0`, `lastRaiseSize = bigBlind`, `roundBet = 0`, `acted = false`, `mayRaise = true`; zuerst handelt der erste aktive Sitz nach dem Button.
-- Showdown-Eintritt: vorerst ein einzelner Pot aus `potTotal` mit allen nicht gefoldeten Spielern; Task 4 ersetzt das durch `computePots`.
+Authorization in `Game.apply`, in this order: `phase != .betting` → `.invalidPhase`; `player` is not at `toActIndex` → `.notYourTurn`; `actor != player` and `actor != hostID` → `.notYourTurn`; `actor == hostID != player` with an action other than fold/check → `.illegalAction`. Rules:
+- `check`: only if `roundBet == currentBet`, otherwise `.illegalAction`
+- `call`: only if `currentBet > roundBet`; pays `min(diff, stack)`, stack 0 → all-in
+- `raiseTo(x)`: only if `mayRaise`, otherwise `.illegalAction`; `minRaiseTo ≤ x ≤ roundBet + stack`, otherwise `.invalidAmount`; `x == roundBet + stack` → all-in
+- full raise: `lastRaiseSize = x - currentBet`, `currentBet = x`, all other active seats `acted = false`, `mayRaise = true`
+- `fold`: `folded = true`; if only one non-folded seat is left → it gets `potTotal`, `phase = .handComplete` (hand end logic in Task 7)
+- Next to act: next seat that is not folded, not all-in, not eliminated and (`!acted` or `roundBet < currentBet`). If there is none, the round is over.
+- Round end: river → showdown; otherwise next street with `currentBet = 0`, `lastRaiseSize = bigBlind`, `roundBet = 0`, `acted = false`, `mayRaise = true`; the first active seat after the button acts first.
+- Entering the showdown: for now a single pot of `potTotal` with all non-folded players; Task 4 replaces this with `computePots`.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
@@ -343,17 +345,17 @@ Autorisierung in `Game.apply`, in dieser Reihenfolge: `phase != .betting` → `.
 
 ---
 
-### Task 4: Pot-Berechnung
+### Task 4: Pot calculation
 
 **Files:**
 - Create: `Sources/PokerCore/Pots.swift`
-- Modify: `Sources/PokerCore/Hand.swift` (Showdown-Eintritt nutzt `computePots`)
+- Modify: `Sources/PokerCore/Hand.swift` (entering the showdown uses `computePots`)
 - Test: `Tests/PokerCoreTests/PotTests.swift`
 
 **Interfaces:**
-- Produces: `func computePots(_ seats: [Seat]) -> [Pot]` (internal) – Reihenfolge Hauptpot zuerst, `eligible` in Sitzreihenfolge
+- Produces: `func computePots(_ seats: [Seat]) -> [Pot]` (internal) – main pot first, `eligible` in seat order
 
-- [ ] **Step 1: Failing Tests** (Helper `func seat(_ id: PlayerID, bet: Chips, allIn: Bool = false, folded: Bool = false) -> Seat` in der Testdatei)
+- [ ] **Step 1: Failing tests** (helper `func seat(_ id: PlayerID, bet: Chips, allIn: Bool = false, folded: Bool = false) -> Seat` in the test file)
 
 ```swift
 @Test func singlePot()            // A100 B100 C100 → [Pot(300, [A,B,C])]
@@ -365,25 +367,25 @@ Autorisierung in `Game.apply`, in dieser Reihenfolge: `phase != .betting` → `.
 
 - [ ] **Step 2: Run** `swift test --filter PotTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-```
-levels = sortiert-eindeutig(handBet aller nicht gefoldeten All-in-Sitze) ∪ {max handBet der nicht gefoldeten}
+```text
+levels = sorted-unique(handBet of all non-folded all-in seats) ∪ {max handBet of the non-folded}
 prev = 0
-für level in levels:
-    amount   = Σ über alle Sitze (min(handBet, level) − min(handBet, prev))
-    eligible = nicht gefoldete Sitze mit handBet ≥ level
+for level in levels:
+    amount   = Σ over all seats (min(handBet, level) − min(handBet, prev))
+    eligible = non-folded seats with handBet ≥ level
     prev = level
-aufeinanderfolgende Pots mit gleichem eligible zusammenfassen; Pots mit amount 0 verwerfen
+merge consecutive pots with the same eligible; drop pots with amount 0
 ```
 
-- [ ] **Step 4: Run** `swift test` → Expected: PASS (inkl. Task-3-Tests mit echter Berechnung)
+- [ ] **Step 4: Run** `swift test` → Expected: PASS (including the Task 3 tests with the real calculation)
 
 - [ ] **Step 5: Commit** `git commit -am "feat(core): side pot calculation"`
 
 ---
 
-### Task 5: All-in und Durchlaufen bis zum Showdown
+### Task 5: All-in and running out to the showdown
 
 **Files:**
 - Modify: `Sources/PokerCore/Hand.swift`
@@ -391,15 +393,15 @@ aufeinanderfolgende Pots mit gleichem eligible zusammenfassen; Pots mit amount 0
 
 **Interfaces:**
 - Consumes: Task 3, Task 4 (`computePots`)
-- Produces: `allIn`-Aktion vollständig; Verhalten "keine Setzrunde mehr möglich → Showdown"
+- Produces: complete `allIn` action; behavior "no betting round possible → showdown"
 
-- [ ] **Step 1: Failing Tests**
+- [ ] **Step 1: Failing tests**
 
 ```swift
 @Test func incompleteAllInDoesNotReopenRaising() throws {
     var g = try Game.started(["A": 1000, "B": 1000, "C": 150])
-    try g.act(.raiseTo(amount: 100)); try g.act(.call)        // A raist, B callt
-    try g.act(.allIn)                                          // C: 150 gesamt, Raise um 50 < 80 → unvollständig
+    try g.act(.raiseTo(amount: 100)); try g.act(.call)        // A raises, B calls
+    try g.act(.allIn)                                          // C: 150 total, raise by 50 < 80 → incomplete
     #expect(g.state.currentBet == 150 && g.toAct == "A")
     #expect(g.state.legalActions(for: "A")?.minRaiseTo == nil)
     #expect(throws: Rejection.illegalAction) { try g.act(.raiseTo(amount: 300)) }
@@ -407,7 +409,7 @@ aufeinanderfolgende Pots mit gleichem eligible zusammenfassen; Pots mit amount 0
 }
 @Test func fullAllInReopensRaising() throws {
     var g = try Game.started(["A": 1000, "B": 1000, "C": 300])
-    try g.act(.raiseTo(amount: 100)); try g.act(.call); try g.act(.allIn)   // C: 300, Raise um 200 ≥ 80
+    try g.act(.raiseTo(amount: 100)); try g.act(.call); try g.act(.allIn)   // C: 300, raise by 200 ≥ 80
     #expect(g.state.minRaiseTo == 500)
     #expect(g.state.legalActions(for: "A")?.minRaiseTo == 500)
 }
@@ -418,21 +420,21 @@ aufeinanderfolgende Pots mit gleichem eligible zusammenfassen; Pots mit amount 0
 }
 @Test func onlyOnePlayerLeftToActRunsOut() throws {
     var g = try Game.started(["A": 1000, "B": 200, "C": 1000])
-    try g.act(.allIn); try g.act(.call); try g.act(.fold)      // B callt all-in mit 200, C foldet
+    try g.act(.allIn); try g.act(.call); try g.act(.fold)      // B calls all-in with 200, C folds
     #expect(g.state.phase == .showdown)
-    #expect(g.state.seat("A")?.stack == 800)                    // ungecallter Überschuss zurück
+    #expect(g.state.seat("A")?.stack == 800)                    // uncalled excess returned
     #expect(g.state.pots == [Pot(amount: 420, eligible: ["A", "B"])])
 }
-@Test func allInWithMayRaiseFalseThatWouldRaiseRejected()   // in incompleteAllIn-Szenario mit A Stack > currentBet: A allIn → .illegalAction
+@Test func allInWithMayRaiseFalseThatWouldRaiseRejected()   // incompleteAllIn scenario with A's stack > currentBet: A allIn → .illegalAction
 ```
 
 - [ ] **Step 2: Run** `swift test --filter AllInTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-`allIn` setzt `x = roundBet + stack`. Ist `x ≤ currentBet` → wie Call. Ist `x > currentBet` → braucht `mayRaise`, sonst `.illegalAction`; mit `x - currentBet ≥ lastRaiseSize` volles Raise (wie Task 3), sonst unvollständig: `currentBet = x`, `lastRaiseSize` unverändert, alle anderen aktiven Sitze `acted = false`; wer vorher schon `acted == true` war, bekommt `mayRaise = false`. `legalActions.minRaiseTo/maxRaiseTo = nil`, wenn `!mayRaise`.
-Nach jeder Aktion und jedem Straßenwechsel: Können höchstens ein nicht gefoldeter, nicht all-in Sitz handeln und hat dieser `roundBet ≥ currentBet` → direkt Showdown (`street` bleibt die zuletzt erreichte, damit die UI "restliche Karten aufdecken" anzeigen kann).
-Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Einsätze) sofort an diesen zurück, `pots` enthält nur umkämpfte Pots.
+`allIn` sets `x = roundBet + stack`. If `x ≤ currentBet` → like a call. If `x > currentBet` → needs `mayRaise`, otherwise `.illegalAction`; with `x - currentBet ≥ lastRaiseSize` a full raise (as in Task 3), otherwise incomplete: `currentBet = x`, `lastRaiseSize` unchanged, all other active seats `acted = false`; whoever already had `acted == true` gets `mayRaise = false`. `legalActions.minRaiseTo/maxRaiseTo = nil` when `!mayRaise`.
+After every action and every street change: if at most one non-folded, non-all-in seat can act and it has `roundBet ≥ currentBet` → straight to the showdown (`street` stays the last one reached, so the UI can show "deal the remaining cards").
+On entering the showdown: pots with exactly one eligible player (uncalled bets) go straight back to that player; `pots` only contains contested pots.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
@@ -440,7 +442,7 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 ---
 
-### Task 6: Showdown auflösen
+### Task 6: Resolving the showdown
 
 **Files:**
 - Modify: `Sources/PokerCore/Pots.swift`, `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift`
@@ -448,9 +450,9 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 **Interfaces:**
 - Consumes: Task 4, Task 5
-- Produces: `func split(_ amount: Chips, among winners: [PlayerID], seats: [Seat], buttonIndex: Int) -> [PlayerID: Chips]` (internal); Dispatch `resolveShowdown`; Test-Helper `mutating func checkDown() throws(Rejection)` (checkt/callt bis `phase != .betting`) in `Helpers.swift`
+- Produces: `func split(_ amount: Chips, among winners: [PlayerID], seats: [Seat], buttonIndex: Int) -> [PlayerID: Chips]` (internal); dispatch `resolveShowdown`; test helper `mutating func checkDown() throws(Rejection)` (checks/calls until `phase != .betting`) in `Helpers.swift`
 
-- [ ] **Step 1: Failing Tests**
+- [ ] **Step 1: Failing tests**
 
 ```swift
 @Test func dealerAwardsSinglePot() throws {
@@ -460,7 +462,7 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 }
 @Test func splitPotOddChipGoesLeftOfButton() throws {
     var g = try Game.started(levels: [BlindLevel(smallBlind: 5, bigBlind: 10, duration: 600)])
-    try g.act(.call); try g.act(.fold); try g.checkDown()       // Pot 25, A und C im Showdown
+    try g.act(.call); try g.act(.fold); try g.checkDown()       // pot 25, A and C in the showdown
     try g.apply(.resolveShowdown(winners: [["A", "C"]]), by: "A", at: t0)
     #expect(g.state.seat("A")?.stack == 1002 && g.state.seat("C")?.stack == 1003)
 }
@@ -471,17 +473,17 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
     try g.apply(.resolveShowdown(winners: [["B"], ["C"]]), by: "A", at: t0)
     #expect(g.state.seat("B")?.stack == 900 && g.state.seat("C")?.stack == 1400 && g.state.seat("A")?.stack == 0)
 }
-@Test func onlyDealerMayResolve()        // resolve by "B" → .notDealer (auch Host ist nur Dealer, wenn er den Button hat)
-@Test func showdownWinnersValidated()    // im Side-Pot-Szenario: [["B"],["B"]] → .invalidShowdown (B nicht berechtigt);
-                                         // [["B"]] → .invalidShowdown (Anzahl); [[],["C"]] → .invalidShowdown
+@Test func onlyDealerMayResolve()        // resolve by "B" → .notDealer (the host is only the dealer when they have the button)
+@Test func showdownWinnersValidated()    // side pot scenario: [["B"],["B"]] → .invalidShowdown (B not eligible);
+                                         // [["B"]] → .invalidShowdown (count); [[],["C"]] → .invalidShowdown
 @Test func resolveOutsideShowdownRejected() // in .betting → .invalidPhase
 ```
 
 - [ ] **Step 2: Run** `swift test --filter ShowdownTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-`resolveShowdown`: nur in `.showdown`, `actor == dealerID`; `winners.count == pots.count`, jede Liste nicht leer, ohne Duplikate und ⊆ `eligible` des Pots. `split`: jeder bekommt `amount / n`; der Rest geht chipweise an die Gewinner in Sitzreihenfolge, beginnend beim ersten Sitz links vom Button. Danach `pots = []`, `phase = .handComplete`.
+`resolveShowdown`: only in `.showdown`, `actor == dealerID`; `winners.count == pots.count`, every list non-empty, without duplicates and ⊆ the pot's `eligible`. `split`: everyone gets `amount / n`; the remainder goes chip by chip to the winners in seat order, starting with the first seat left of the button. Then `pots = []`, `phase = .handComplete`.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
@@ -489,7 +491,7 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 ---
 
-### Task 7: Handende, Ausscheiden, nächste Hand, Spieler entfernen
+### Task 7: Hand end, elimination, next hand, removing players
 
 **Files:**
 - Modify: `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift`
@@ -497,12 +499,12 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 **Interfaces:**
 - Consumes: Task 6
-- Produces: `extension GameState { mutating func finishHand() }` (Ausscheiden, Turnierende); Dispatch `startNextHand`, `removePlayer` im Spiel; `public var ranking: [Seat]` (nach `eliminatedRank`, Sieger zuerst)
+- Produces: `extension GameState { mutating func finishHand() }` (elimination, tournament end); dispatch `startNextHand`, `removePlayer` during the game; `public var ranking: [Seat]` (by `eliminatedRank`, winner first)
 
-- [ ] **Step 1: Failing Tests**
+- [ ] **Step 1: Failing tests**
 
 ```swift
-@Test func eliminatedPlayerGetsRank()      // sidePotsResolvedSeparately-Szenario → A.eliminatedRank == 3, phase .handComplete
+@Test func eliminatedPlayerGetsRank()      // sidePotsResolvedSeparately scenario → A.eliminatedRank == 3, phase .handComplete
 @Test func twoEliminatedSameHandRankedByStartingStack() throws {
     var g = try Game.started(["A": 500, "B": 300, "C": 1000])
     try g.act(.allIn); try g.act(.allIn); try g.act(.call)
@@ -519,27 +521,27 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 }
 @Test func buttonSkipsEliminated() throws {
     var g = try Game.started(["A": 1000, "B": 100, "C": 1000, "D": 1000])
-    try g.act(.call); try g.act(.call); try g.act(.allIn); try g.act(.call)  // D, A callen, B all-in 100, C callt
-    try g.act(.call); try g.act(.call); try g.checkDown()                     // D, A callen nach
+    try g.act(.call); try g.act(.call); try g.act(.allIn); try g.act(.call)  // D, A call, B all-in 100, C calls
+    try g.act(.call); try g.act(.call); try g.checkDown()                     // D, A call the raise
     try g.apply(.resolveShowdown(winners: [["C"]]), by: "A", at: t0)
     try g.apply(.startNextHand, by: "A", at: t0)
     #expect(g.state.seat("B")?.eliminatedRank == 4 && g.state.dealerID == "C")
 }
-@Test func startNextHandOnlyByDealerOrHost()  // nach Hand 1 (Dealer und Host = A): by "C" → .notDealer; in .betting → .invalidPhase
+@Test func startNextHandOnlyByDealerOrHost()  // after hand 1 (dealer and host = A): by "C" → .notDealer; in .betting → .invalidPhase
 @Test func removePlayerMidHandFoldsAndEliminates() throws {
     var g = try Game.started()
     try g.apply(.removePlayer(player: "B"), by: "A", at: t0)
-    try g.act(.fold)                                            // A foldet → C gewinnt
+    try g.act(.fold)                                            // A folds → C wins
     #expect(g.state.phase == .handComplete && g.state.seat("B")?.eliminatedRank == 3)
 }
-@Test func removePlayerOnTurnAdvancesTurn()   // remove "A" ist Host → .illegalAction; nach A call: remove "B" (am Zug) → toAct == "C"
+@Test func removePlayerOnTurnAdvancesTurn()   // remove "A" is the host → .illegalAction; after A calls: remove "B" (to act) → toAct == "C"
 ```
 
 - [ ] **Step 2: Run** `swift test --filter HandEndTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-`finishHand()` läuft bei jedem Übergang nach `.handComplete`: Sitze mit `stack == 0` und ohne Rang scheiden aus; Bei `n` noch aktiven Sitzen vor der Hand und `k` Ausgeschiedenen, sortiert nach `stackAtHandStart` absteigend: Rang = `n − k + 1 + index` (wer mehr hatte, platziert sich besser). Bleibt ein Sitz übrig → `phase = .finished`. `startNextHand`: in `.handComplete`, `actor == dealerID || actor == hostID`, sonst `.notDealer`; Button wandert zum nächsten nicht ausgeschiedenen Sitz; `handNumber += 1`; Uhr fortschreiben (Task 8 – bis dahin keine Uhr-Logik); `startHand()`. `removePlayer` im Spiel (Host-only, nicht der Host selbst): Sitz `folded = true`, `stack = 0`; war er am Zug, rückt der nächste nach; danach dieselbe Prüfung wie nach einem Fold.
+`finishHand()` runs on every transition to `.handComplete`: seats with `stack == 0` and no rank are eliminated. With `n` active seats before the hand and `k` eliminated ones, sorted by `stackAtHandStart` descending: rank = `n − k + 1 + index` (whoever had more places better). If one seat is left → `phase = .finished`. `startNextHand`: in `.handComplete`, `actor == dealerID || actor == hostID`, otherwise `.notDealer`; the button moves to the next non-eliminated seat; `handNumber += 1`; advance the clock (Task 8 – no clock logic until then); `startHand()`. `removePlayer` during the game (host only, not the host itself): seat `folded = true`, `stack = 0`; if it was their turn, the next player moves up; then the same check as after a fold.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
@@ -547,7 +549,7 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 ---
 
-### Task 8: Blind-Uhr
+### Task 8: Blind clock
 
 **Files:**
 - Create: `Sources/PokerCore/Clock.swift`
@@ -561,16 +563,16 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
       mutating func advance(to now: Date, levels: [BlindLevel])
       mutating func pause(at now: Date)
       mutating func resume(at now: Date)
-      public func remaining(at now: Date) -> TimeInterval   // pausedRemaining, sonst max(0, levelEndsAt − now)
+      public func remaining(at now: Date) -> TimeInterval   // pausedRemaining, otherwise max(0, levelEndsAt − now)
   }
   ```
-  Dispatch `pauseClock`, `resumeClock` (Host-only).
+  Dispatch `pauseClock`, `resumeClock` (host only).
 
-- [ ] **Step 1: Failing Tests** (`twoLevels = [BlindLevel(10, 20, 600), BlindLevel(20, 40, 600)]`, Hand 1 per Fold-Fold beenden)
+- [ ] **Step 1: Failing tests** (`twoLevels = [BlindLevel(10, 20, 600), BlindLevel(20, 40, 600)]`, hand 1 finished by fold, fold)
 
 ```swift
-@Test func levelAdvancesAtNextHandAfterExpiry() // startNextHand at t0+601 → levelIndex 1, BB-Sitz roundBet 40, levelEndsAt t0+1200
-@Test func levelDoesNotChangeMidHand()          // Aktionen bei t0+700 → levelIndex 0
+@Test func levelAdvancesAtNextHandAfterExpiry() // startNextHand at t0+601 → levelIndex 1, BB seat roundBet 40, levelEndsAt t0+1200
+@Test func levelDoesNotChangeMidHand()          // actions at t0+700 → levelIndex 0
 @Test func lastLevelStays()                     // startNextHand at t0+99_999 → levelIndex 1
 @Test func pauseFreezesRemaining() throws {
     var g = try Game.started(levels: twoLevels)
@@ -579,15 +581,15 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
     try g.apply(.resumeClock, by: "A", at: t0 + 1000)
     #expect(g.state.clock.levelEndsAt == t0 + 1500)
 }
-@Test func noAdvanceWhilePaused()               // pause, Hand beenden, startNextHand at t0+5000 → levelIndex 0
-@Test func clockCommandsHostOnly()              // pauseClock by "B" → .notHost; resume ohne Pause → .invalidPhase; pause doppelt → .invalidPhase
+@Test func noAdvanceWhilePaused()               // pause, finish the hand, startNextHand at t0+5000 → levelIndex 0
+@Test func clockCommandsHostOnly()              // pauseClock by "B" → .notHost; resume without pause → .invalidPhase; pause twice → .invalidPhase
 ```
 
 - [ ] **Step 2: Run** `swift test --filter ClockTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren**
+- [ ] **Step 3: Implement**
 
-`advance`: bei Pause nichts tun; sonst solange `levelIndex < levels.count − 1` und `now ≥ levelEndsAt`: `levelIndex += 1`, `levelEndsAt += levels[levelIndex].duration`. Aufruf in `startNextHand` vor `startHand()`. `pause`: `pausedRemaining = remaining(at:)`, `levelEndsAt = nil`. `resume`: `levelEndsAt = now + pausedRemaining`, `pausedRemaining = nil`.
+`advance`: do nothing while paused; otherwise while `levelIndex < levels.count − 1` and `now ≥ levelEndsAt`: `levelIndex += 1`, `levelEndsAt += levels[levelIndex].duration`. Called in `startNextHand` before `startHand()`. `pause`: `pausedRemaining = remaining(at:)`, `levelEndsAt = nil`. `resume`: `levelEndsAt = now + pausedRemaining`, `pausedRemaining = nil`.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
@@ -595,16 +597,16 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 ---
 
-### Task 9: Rückgängig und Persistenz-Fähigkeit
+### Task 9: Undo and persistability
 
 **Files:**
 - Modify: `Sources/PokerCore/Game.swift`
 - Test: `Tests/PokerCoreTests/UndoTests.swift`
 
 **Interfaces:**
-- Produces: Dispatch `undo` (Host-only, `state = history.removeLast()`); `Game` per `JSONEncoder`/`JSONDecoder` verlustfrei serialisierbar (Persistenz-Datei der App in Plan 3)
+- Produces: dispatch `undo` (host only, `state = history.removeLast()`); `Game` serializes losslessly with `JSONEncoder`/`JSONDecoder` (the app's persistence file comes in plan 3)
 
-- [ ] **Step 1: Failing Tests**
+- [ ] **Step 1: Failing tests**
 
 ```swift
 @Test func undoRestoresPreviousState() throws {
@@ -620,19 +622,19 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
     #expect(g.state == atShowdown)
 }
 @Test func undoOnlyHost()                 // by "B" → .notHost
-@Test func nothingToUndoOnFreshGame()     // Game(...) direkt → .nothingToUndo
-@Test func rejectedCommandDoesNotGrowHistory() // history.count vor/nach abgelehnter Aktion gleich
+@Test func nothingToUndoOnFreshGame()     // Game(...) directly → .nothingToUndo
+@Test func rejectedCommandDoesNotGrowHistory() // history.count equal before/after a rejected action
 @Test func gameRoundTripsThroughJSON() throws {
     var g = try Game.started(); try g.act(.raiseTo(amount: 100))
     let data = try Wire.encoder.encode(g)
     #expect(try Wire.decoder.decode(Game.self, from: data) == g)
 }
 ```
-(`Wire.encoder/decoder` kommen in Task 10; bis dahin in diesem Test `JSONEncoder()`/`JSONDecoder()` verwenden und in Task 10 umstellen.)
+(`Wire.encoder/decoder` arrive in Task 10; until then use `JSONEncoder()`/`JSONDecoder()` in this test and switch in Task 10.)
 
 - [ ] **Step 2: Run** `swift test --filter UndoTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren** – `undo` ohne Historie → `.nothingToUndo`; `undo` selbst wird nicht in die Historie geschrieben.
+- [ ] **Step 3: Implement** – `undo` without history → `.nothingToUndo`; `undo` itself is not written to the history.
 
 - [ ] **Step 4: Run** `swift test` → Expected: PASS
 
@@ -640,11 +642,11 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
 
 ---
 
-### Task 10: Wire-Protokoll und PROTOCOL.md
+### Task 10: Wire protocol and PROTOCOL.md
 
 **Files:**
 - Create: `Sources/PokerCore/Wire.swift`, `docs/PROTOCOL.md`
-- Modify: `docs/superpowers/specs/2026-11-11-pokerchipcase-design.md` (Abschnitt Protokoll: Client → Host sind `hello` und `command`)
+- Modify: `docs/superpowers/specs/2026-11-11-pokerchipcase-design.md` (protocol section: client → host are `hello` and `command`)
 - Test: `Tests/PokerCoreTests/WireTests.swift`
 
 **Interfaces:**
@@ -668,9 +670,9 @@ Beim Showdown-Eintritt: Pots mit genau einem berechtigten Spieler (ungecallte Ei
       public static func decodeServer(_ data: Data) throws -> (id: UUID, message: ServerMessage)
   }
   ```
-  Umschlag: `{"v": 1, "type": "<case>", "id": "<UUID>", "payload": <Nutzlast>}`; `type` ist der Case-Name (`hello`, `command`, `welcome`, `ack`, `state`, `error`).
+  Envelope: `{"v": 1, "type": "<case>", "id": "<UUID>", "payload": <payload>}`; `type` is the case name (`hello`, `command`, `welcome`, `ack`, `state`, `error`).
 
-- [ ] **Step 1: Failing Tests**
+- [ ] **Step 1: Failing tests**
 
 ```swift
 let id1 = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
@@ -679,23 +681,23 @@ let id1 = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     #expect(String(decoding: data, as: UTF8.self) ==
         #"{"id":"00000000-0000-0000-0000-000000000001","payload":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"type":"command","v":1}"#)
 }
-@Test func ackGoldenJSON()      // .ack(Ack(id: id1, result: .rejected(reason: .notYourTurn))) → exakter String mit "rejected":{"reason":"notYourTurn"}
-@Test func clientRoundTrip()    // hello und command encode → decodeClient == Original, id erhalten
-@Test func serverRoundTrip()    // state(Game.started().state) encode → decodeServer == Original
-@Test func versionMismatchRejected() // JSON mit "v":2 → WireError.versionMismatch(2)
+@Test func ackGoldenJSON()      // .ack(Ack(id: id1, result: .rejected(reason: .notYourTurn))) → exact string with "rejected":{"reason":"notYourTurn"}
+@Test func clientRoundTrip()    // hello and command encode → decodeClient == original, id preserved
+@Test func serverRoundTrip()    // state(Game.started().state) encode → decodeServer == original
+@Test func versionMismatchRejected() // JSON with "v":2 → WireError.versionMismatch(2)
 @Test func unknownTypeRejected()     // "type":"bogus" → WireError.unknownType("bogus")
 ```
-Dazu in `UndoTests.gameRoundTripsThroughJSON` auf `Wire.encoder/decoder` umstellen.
+Also switch `UndoTests.gameRoundTripsThroughJSON` to `Wire.encoder/decoder`.
 
 - [ ] **Step 2: Run** `swift test --filter WireTests` → Expected: FAIL
 
-- [ ] **Step 3: Implementieren** – manuelles `Codable` nur für den Umschlag (`type`/`payload` flach); `Command`, `Action`, `GameState` usw. bleiben synthetisiert (gelabelte Associated Values ergeben `{"case":{"label":…}}`, Cases ohne Werte `{"fold":{}}`).
+- [ ] **Step 3: Implement** – manual `Codable` only for the envelope (`type`/`payload` flat); `Command`, `Action`, `GameState` etc. stay synthesized (labeled associated values produce `{"case":{"label":…}}`, cases without values `{"fold":{}}`).
 
-- [ ] **Step 4: `docs/PROTOCOL.md` schreiben** – Zielgruppe: jemand, der einen kompatiblen Client (z. B. Android) baut. Inhalt: Transport (WebSocket über TLS 1.2 PSK, Cipher Suite `TLS_PSK_WITH_AES_128_GCM_SHA256`, PSK = HKDF-SHA256 über den 4-stelligen Tisch-Code mit Salt `pokerchipcase-v1`, Bonjour `_pokerchipcase._tcp`), Umschlag, alle Nachrichtentypen mit einem JSON-Beispiel je Typ (aus den Golden-Tests), Ablauf `hello → welcome → state`, `command → ack + state`, Autorisierungsregeln (wer darf welchen Befehl), Datumsformat (Millisekunden seit 1970), Versionsregel.
+- [ ] **Step 4: Write `docs/PROTOCOL.md`** – audience: someone building a compatible client (e.g. Android). Content: transport (WebSocket over TLS 1.2 PSK, cipher suite `TLS_PSK_WITH_AES_128_GCM_SHA256`, PSK = HKDF-SHA256 over the 4-digit table code with salt `pokerchipcase-v1`, Bonjour `_pokerchipcase._tcp`), envelope, every message type with one JSON example each (from the golden tests), flow `hello → welcome → state`, `command → ack + state`, authorization rules (who may send which command), date format (milliseconds since 1970), version rule.
 
-- [ ] **Step 5: Spec anpassen** – Protokoll-Abschnitt: Client → Host sind `hello` und `command` (`command` trägt `Command`; Autorisierung erfolgt in `PokerCore`).
+- [ ] **Step 5: Update the spec** – protocol section: client → host are `hello` and `command` (`command` carries `Command`; authorization happens in `PokerCore`).
 
-- [ ] **Step 6: Run** `swift test` → Expected: alle Tests PASS
+- [ ] **Step 6: Run** `swift test` → Expected: all tests PASS
 
 - [ ] **Step 7: Commit**
 

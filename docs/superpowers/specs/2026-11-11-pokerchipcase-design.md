@@ -1,134 +1,138 @@
 # PokerChipCase – Design
 
-Stand: 2026-11-11
+Date: 2026-11-11
 
-## Ziel
+## Goal
 
-Eine iOS-App, die beim Texas-Hold'em-Abend unter Freunden den Pokerkoffer ersetzt – alles außer dem Kartenspiel. Gespielt wird mit echten Karten, jeder Spieler nutzt die App auf seinem eigenen iPhone, gesetzt wird in der App. Es geht nur um Spielgeld, kein echtes Geld.
+An iOS app that replaces the poker chip case at a Texas Hold'em night among friends – everything except the deck of cards. Players use real cards, every player uses the app on their own iPhone, and betting happens in the app. Play money only, no real money.
 
-**Erfolg heißt:** Ein kompletter Turnierabend ohne Koffer, ohne dass jemand rechnen muss.
+**Success means:** a complete tournament night without the case, and nobody has to do any math.
 
-## Entscheidungen
+## Decisions
 
-| Thema | Entscheidung |
+| Topic | Decision |
 |---|---|
-| Plattform | Nur iOS (ab iOS 17), Swift/SwiftUI |
-| Lizenz | Open Source, MIT (verträgt sich mit App Store; GPL nicht) |
-| Android | Nicht von uns. Dokumentiertes Protokoll (`docs/PROTOCOL.md`) ermöglicht Community-Portierungen, die am selben Tisch mitspielen können |
-| Spielvariante | No-Limit Texas Hold'em, Turnier. Cash Game später |
-| Kommunikation | Lokal, ohne Internet: zeilenweises JSON über TLS/TCP mit `Network.framework`, Bonjour-Discovery, `includePeerToPeer = true` (funktioniert mit Router **und** direkt Handy-zu-Handy per AWDL) |
-| Verschlüsselung | TLS mit Pre-Shared-Key, abgeleitet aus einem Tisch-Code |
-| Autorität | Der Host ist die einzige Wahrheit. Clients senden nur Wünsche und zeigen den vom Host gesendeten Zustand an |
-| Host | Ein Spieler-Handy (spielt mit). Separate Tisch-Anzeige (iPad) später |
-| Karten/Showdown | App kennt keine Karten. Der Dealer der Hand wählt pro Pot den/die Gewinner; der Host kann es ersatzweise tun |
+| Platform | iOS only (iOS 17+), Swift/SwiftUI |
+| License | Open source, MIT (compatible with the App Store; GPL is not) |
+| Android | Not by us. A documented protocol (`docs/PROTOCOL.md`) lets community ports play at the same table |
+| Game | No-Limit Texas Hold'em, tournament. Cash game later |
+| Communication | Local, no internet: newline-delimited JSON over TLS/TCP with `Network.framework`, Bonjour discovery, `includePeerToPeer = true` (works with a router **and** directly phone to phone via AWDL) |
+| Encryption | TLS with a pre-shared key derived from a table code |
+| Authority | The host is the single source of truth. Clients only send requests and display the state the host sends |
+| Host | A player's phone (plays along). Separate table display (iPad) later |
+| Cards/showdown | The app knows no cards. The dealer of the hand picks the winner(s) of each pot; the host can do it as a fallback |
 
-## Nicht im Umfang (MVP)
+## Out of scope (MVP)
 
-- Cash Game, Rebuys, Late Join
-- Separate Tisch-Anzeige (iPad) – architektonisch vorbereitet, da nur ein Client ohne Sitzplatz
-- Vorab-Aktionen ("Check/Fold", "Call any")
+- Cash game, rebuys, late join
+- Separate table display (iPad) – prepared in the architecture, since it is just a client without a seat
+- Pre-actions ("check/fold", "call any")
 - Antes
-- Accounts, Cloud, Statistiken über mehrere Abende
-- Schutz gegen absichtliches Schummeln
-- Android-App
+- Accounts, cloud, statistics across nights
+- Protection against deliberate cheating
+- Android app
 
-## Architektur
+## Architecture
 
-```
+```text
 pokerchipcase/
-  Package.swift              Swift Package mit zwei Targets
-  Sources/PokerCore/         Spiellogik + Protokoll-Typen (kein UI, kein Netzwerk)
-  Sources/PokerNet/          Host/Client über Network.framework
+  Package.swift              Swift package with two targets
+  Sources/PokerCore/         game logic + protocol types (no UI, no networking)
+  Sources/PokerNet/          host/client over Network.framework
   Tests/PokerCoreTests/
   Tests/PokerNetTests/
-  App/                       Xcode-Projekt, SwiftUI, hängt vom Package ab
+  App/                       Xcode project, SwiftUI, depends on the package
   docs/PROTOCOL.md
   .github/workflows/ci.yml
 ```
 
-Beide Package-Targets laufen auch auf macOS – Logik und Netzwerk sind damit ohne iPhone testbar.
+Both package targets also run on macOS – logic and networking are testable without an iPhone.
 
 ### PokerCore
 
-Reine Funktion: `apply(state, command) -> Result<State, Rejection>`. `State` ist ein `Codable`-Werttyp. Keine Uhr, kein Zufall im Kern: Zeit und Zufall (erster Button) kommen als Eingabe herein, damit Tests deterministisch sind.
+A pure function: `apply(state, command) -> Result<State, Rejection>`. `State` is a `Codable` value type. No clock and no randomness in the core: time and randomness (first button) come in as input, so tests are deterministic.
 
-Enthält:
-- Turnier-Konfiguration: Startstack, Blind-Struktur (Liste von Levels: SB, BB, Dauer), Vorlagen
-- Sitzplätze in Tischreihenfolge, Button, Small/Big Blind
-- Phasen: `lobby → preflop → flop → turn → river → showdown → handEnd → … → finished`
-- Erlaubte Aktionen: Fold, Check, Call, Bet, Raise, All-in
-- No-Limit-Regeln: Min-Raise = Größe der letzten vollen Erhöhung; ein unvollständiges All-in-Raise öffnet die Setzrunde nicht erneut
-- Heads-up: Button setzt Small Blind und handelt preflop zuerst
-- Pots: Hauptpot und Side-Pots aus den Einsätzen der All-in-Spieler
-- Auszahlung pro Pot an einen oder mehrere Gewinner; bei Split geht ein Restchip an den ersten berechtigten Gewinner links vom Button
-- Ausscheiden bei Stack 0, Turnierende wenn ein Spieler übrig ist, Rangliste
-- Button wandert zum nächsten noch aktiven Spieler (vereinfachte Regel, keine Dead-Button-Logik)
-- Blind-Level: Level-Ende als Zeitstempel bzw. Restzeit bei Pause; neues Level gilt ab der nächsten Hand
-- Historie: Liste aller bisherigen Zustände für "Rückgängig"
+Contains:
 
-### Protokoll
+- Tournament config: starting stack, blind structure (list of levels: SB, BB, duration), presets
+- Seats in table order, button, small/big blind
+- Phases: `lobby → preflop → flop → turn → river → showdown → handEnd → … → finished`
+- Legal actions: fold, check, call, bet, raise, all-in
+- No-limit rules: min raise = size of the last full raise; an incomplete all-in raise does not reopen the betting
+- Heads-up: the button posts the small blind and acts first preflop
+- Pots: main pot and side pots from the all-in players' bets
+- Payout per pot to one or more winners; on a split an odd chip goes to the first eligible winner left of the button
+- Elimination at stack 0, tournament ends when one player is left, ranking
+- Button moves to the next active player (simplified rule, no dead-button logic)
+- Blind levels: level end as a timestamp, or remaining time while paused; a new level applies from the next hand
+- History: list of all previous states for undo
 
-Details in `docs/PROTOCOL.md`. Jede Nachricht ist JSON mit Umschlag:
+### Protocol
+
+Details in `docs/PROTOCOL.md`. Every message is JSON with an envelope:
 
 ```json
-{ "v": 1, "type": "action", "id": "uuid", "payload": { } }
+{ "v": 1, "type": "command", "id": "uuid", "payload": { } }
 ```
 
-Client → Host:
-- `hello` – Protokollversion, Name, optional Reconnect-Token
-- `command` – jeder Spielbefehl: Aktionen (Fold/Check/Call/Bet/Raise/All-in), Showdown-Ergebnis, Host-Befehle (starten, pausieren, fortsetzen, rückgängig, für abwesenden Spieler folden/checken, Spieler entfernen). Wer welchen Befehl senden darf, prüft `PokerCore`.
+Client → host:
 
-Host → Client:
-- `welcome` – Token und Sitzplatz
-- `ack` – zu jeder Client-Nachricht: `ok` oder `rejected` mit Grund
-- `state` – nach jeder Änderung der komplette Tischzustand
+- `hello` – protocol version, name, optional reconnect token
+- `command` – every game command: actions (fold/check/call/bet/raise/all-in), showdown result, host commands (start, pause, resume, undo, fold/check for an absent player, remove player). `PokerCore` checks who may send which command.
 
-Der Client ändert nie selbst den Zustand. Nach dem Senden zeigt er "wird gesendet…", bis `ack` kommt. Alles, was er anzeigt, stammt aus dem letzten `state`.
+Host → client:
 
-Der Zustand enthält keine Geheimnisse (alle Stacks sind öffentlich), daher bekommt jeder Client denselben Snapshot.
+- `welcome` – token and seat
+- `ack` – for every `command`: `ok` or `rejected` with a reason
+- `state` – the complete table state after every change
+- `error` – a machine-readable code (for example `versionMismatch`)
+
+The client never changes the state itself. After sending it shows "sending…" until the `ack` arrives. Everything it displays comes from the last `state`.
+
+The state contains no secrets (all stacks are public), so every client gets the same snapshot.
 
 ### PokerNet
 
-- **Host:** `NWListener` mit TCP + TLS-PSK, eine JSON-Nachricht pro Zeile (WebSocket verworfen: der Handshake braucht URL-Endpoints, Bonjour/AWDL liefern Service-Endpoints), veröffentlicht Bonjour-Dienst `_pokerchipcase._tcp` mit Tischnamen.
-- **Client:** `NWBrowser` listet Tische in der Nähe; Verbindung mit denselben Parametern.
-- Beide mit `includePeerToPeer = true`.
-- Das Host-Gerät verbindet sich intern als normaler Client mit seinem eigenen Server – ein einziger Code-Pfad.
-- **Verschlüsselung:** Der Host erzeugt einen 4-stelligen Tisch-Code. Schlüssel = HKDF-SHA256 (CryptoKit) über den Code mit festem Salt `pokerchipcase-v1`. Cipher Suite `TLS_PSK_WITH_AES_128_GCM_SHA256`, TLS 1.2 (wie Apples Peer-to-Peer-Beispiel). Ein 4-stelliger Code ist kein Schutz gegen gezielte Angriffe – Zweck sind vertrauliche Übertragung im Alltag und dass niemand versehentlich am falschen Tisch landet.
+- **Host:** `NWListener` with TCP + TLS-PSK, one JSON message per line (WebSocket was dropped: its handshake needs URL endpoints, Bonjour/AWDL deliver service endpoints), advertises the Bonjour service `_pokerchipcase._tcp` with the table name.
+- **Client:** `NWBrowser` lists nearby tables; connects with the same parameters.
+- Both use `includePeerToPeer = true`.
+- The host device connects to its own server as a regular client – a single code path.
+- **Encryption:** the host generates a 4-digit table code. Key = HKDF-SHA256 (CryptoKit) over the code with the fixed salt `pokerchipcase-v1`. Cipher suite `TLS_PSK_WITH_AES_128_GCM_SHA256`, TLS 1.2 (as in Apple's peer-to-peer sample). A 4-digit code does not protect against targeted attacks – the goal is everyday confidentiality and that nobody joins the wrong table by accident.
 
 ### App (SwiftUI)
 
-- **Start:** Tisch erstellen / Tisch beitreten (Liste aus Bonjour, dann Code eingeben), Name eingeben
-- **Lobby (Host):** Turnier-Einstellungen mit Vorlagen, Tisch-Code anzeigen, Spieler per Drag & Drop in Sitzreihenfolge bringen, Button zufällig oder manuell, Start
-- **Tisch-Ansicht (alle):** immer sichtbar – eigener Stack groß, Pot, zu callender Betrag, alle Spieler mit Stack und Einsatz der Runde, aktiver Spieler hervorgehoben, aktuelles Blind-Level und Restzeit. Aktions-Buttons (Fold, Check/Call, Bet/Raise mit Slider und Schnellwahl ½ Pot / Pot / All-in) nur aktiv, wenn man dran ist, sonst ausgegraut. All-in mit Bestätigung. Vibration, wenn man dran ist
-- **Dealer-Hinweise:** "Du dealst", "Flop aufdecken", "Turn aufdecken", "River aufdecken"
-- **Showdown (Dealer der Hand):** Pots aufgelistet, pro Pot Gewinner antippen (Mehrfachauswahl = Split)
-- **Host-Menü:** Pause/Fortsetzen, Rückgängig, für abwesenden Spieler folden/checken, Spieler entfernen
-- **Ende:** Rangliste
-- Display bleibt während des Spiels an (`isIdleTimerDisabled`)
-- Host speichert den Zustand inkl. Historie nach jeder Änderung als JSON in Application Support; beim Start wird "Spiel fortsetzen" angeboten
+- **Start:** create table / join table (list from Bonjour, then enter the code), enter name
+- **Lobby (host):** tournament settings with presets, show the table code, drag & drop players into seat order, button random or manual, start
+- **Table view (everyone):** always visible – own stack large, pot, amount to call, all players with stack and bet of the round, active player highlighted, current blind level and remaining time. Action buttons (fold, check/call, bet/raise with slider and quick picks ½ pot / pot / all-in) only enabled on your turn, greyed out otherwise. All-in needs confirmation. Vibration when it is your turn
+- **Dealer hints:** "You deal", "Deal the flop", "Deal the turn", "Deal the river"
+- **Showdown (dealer of the hand):** pots listed, tap the winner(s) per pot (multiple = split)
+- **Host menu:** pause/resume, undo, fold/check for an absent player, remove player
+- **End:** ranking
+- The display stays on during the game (`isIdleTimerDisabled`)
+- The host saves the state including history as JSON in Application Support after every change; on launch it offers "Resume game"
 
-## Fehlerbehandlung
+## Error handling
 
-| Fall | Verhalten |
+| Case | Behavior |
 |---|---|
-| Client verliert Verbindung | Platz bleibt. Client sucht den Tisch per Bonjour und verbindet sich mit Token neu. Ist er dran, wartet das Spiel; Host kann manuell für ihn folden/checken. Kein automatischer Timeout |
-| Host-App stürzt ab / wird beendet | Neustart → "Spiel fortsetzen" aus gespeicherter Datei. Clients verbinden sich neu |
-| Ungültige Aktion (Doppeltipp, falscher Spieler, zu kleiner Raise) | `ack rejected` mit Grund; Zustand unverändert |
-| Protokollversion passt nicht | Beitritt abgelehnt: "Bitte App aktualisieren" |
-| Falscher Tisch-Code | TLS-Handshake scheitert → "Code falsch" |
-| Berechtigung "Lokales Netzwerk" verweigert | Erklärbildschirm mit Link zu den Einstellungen |
+| Client loses connection | Seat stays. The client finds the table via Bonjour and reconnects with its token. If it is their turn, the game waits; the host can fold/check for them manually. No automatic timeout |
+| Host app crashes / is closed | Relaunch → "Resume game" from the saved file. Clients reconnect |
+| Invalid action (double tap, wrong player, raise too small) | `ack rejected` with a reason; state unchanged |
+| Protocol version mismatch | Join rejected with code `versionMismatch`; the app shows "Please update the app" |
+| Wrong table code | TLS handshake fails → "Wrong code" |
+| "Local network" permission denied | Explanation screen with a link to Settings |
 
 ## Tests
 
-- **PokerCore (Schwerpunkt):** Unit-Tests für Side-Pots, Min-Raise und unvollständige All-ins, Heads-up-Regel, Restchip bei Split, Ausscheiden, Turnierende, Blind-Level-Wechsel, Rückgängig. Szenario-Tests, die komplette Hände als Befehlsfolge durchspielen.
-- **PokerNet:** Integrationstest auf macOS – Host plus mehrere Clients über `localhost`: Beitritt, falscher Code, Versionskonflikt, Reconnect mit Token.
-- **App:** Manuell im Simulator (mehrere Simulatoren an einem Tisch) und auf echten Geräten.
-- **CI:** GitHub Actions auf macOS-Runner: `swift test` für das Package, `xcodebuild build` für die App.
+- **PokerCore (focus):** unit tests for side pots, min raise and incomplete all-ins, heads-up rule, odd chip on splits, elimination, tournament end, blind level changes, undo. Scenario tests that play complete hands as command sequences.
+- **PokerNet:** integration tests on macOS – host plus several clients over `localhost`: join, wrong code, version mismatch, reconnect with token.
+- **App:** manually in the simulator (several simulators at one table) and on real devices.
+- **CI:** GitHub Actions on a macOS runner: `swift test` for the package, `xcodebuild build` for the app.
 
-## Später
+## Later
 
-- Tisch-Anzeige (iPad) als Client ohne Sitzplatz
-- Cash Game mit Rebuys und Abrechnung
-- Vorab-Aktionen
+- Table display (iPad) as a client without a seat
+- Cash game with rebuys and settlement
+- Pre-actions
 - Antes
 - TestFlight / App Store
