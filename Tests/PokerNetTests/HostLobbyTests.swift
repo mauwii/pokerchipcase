@@ -15,11 +15,6 @@ private func snapshot(guests: Int, started: Bool = false) throws -> HostSnapshot
     return snap
 }
 
-private actor Inbox {
-    var last: HostSnapshot?
-    func put(_ s: HostSnapshot) { last = s }
-}
-
 @Suite(.timeLimit(.minutes(1)))
 struct HostLobbyTests {
     @Test func helloJoinsLobbyAndBroadcastsState() async throws {

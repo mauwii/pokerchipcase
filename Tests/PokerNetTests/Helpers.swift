@@ -67,6 +67,12 @@ func eventually(timeout: Duration = .seconds(5), _ condition: @Sendable () async
 
 let code4711 = TableCode("4711")!
 
+/// Keeps the last snapshot passed to `TableHost.onChange`.
+actor Inbox {
+    var last: HostSnapshot?
+    func put(_ s: HostSnapshot) { last = s }
+}
+
 extension ServerMessage {
     var welcome: Welcome? { if case let .welcome(w) = self { w } else { nil } }
     var state: GameState? { if case let .state(s) = self { s } else { nil } }

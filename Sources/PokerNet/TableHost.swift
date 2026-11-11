@@ -70,13 +70,35 @@ public actor TableHost {
     }
 
     private func receive(_ data: Data, from id: UUID) {
-        guard let (_, message) = try? Wire.decodeClient(data) else { return }
+        let messageID: UUID
+        let message: ClientMessage
+        do {
+            (messageID, message) = try Wire.decodeClient(data)
+        } catch WireError.versionMismatch {
+            return reject(.versionMismatch, id)
+        } catch {
+            return send(.error(WireErrorCode.malformed.rawValue), to: id)
+        }
         switch message {
         case let .hello(hello):
             welcome(hello, from: id)
-        case .command:
-            break
+        case let .command(request):
+            handle(request, messageID: messageID, from: id)
         }
+    }
+
+    private func handle(_ request: CommandRequest, messageID: UUID, from id: UUID) {
+        guard let player = bound[id] else {
+            return send(.error(WireErrorCode.helloRequired.rawValue), to: id)
+        }
+        do {
+            try snapshot.game.apply(request.command, by: player, at: Date(), expectedVersion: request.stateVersion)
+        } catch {
+            return send(.ack(Ack(id: messageID, result: .rejected(reason: error))), to: id)
+        }
+        send(.ack(Ack(id: messageID, result: .ok)), to: id)
+        broadcastState()
+        onChange(snapshot)
     }
 
     private func welcome(_ hello: Hello, from id: UUID) {
