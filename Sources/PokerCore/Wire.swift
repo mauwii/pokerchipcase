@@ -3,7 +3,7 @@ import Foundation
 public struct Hello: Codable, Equatable, Sendable {
     public var protocolVersion: Int
     public var name: String
-    /// Reconnect-Token aus einem früheren `welcome`.
+    /// Reconnect token from an earlier `welcome`.
     public var token: String?
 
     public init(protocolVersion: Int, name: String, token: String?) {
@@ -29,7 +29,7 @@ public enum AckResult: Codable, Equatable, Sendable {
 }
 
 public struct Ack: Codable, Equatable, Sendable {
-    /// `id` der beantworteten Client-Nachricht.
+    /// `id` of the client message being answered.
     public var id: UUID
     public var result: AckResult
 
@@ -41,7 +41,7 @@ public struct Ack: Codable, Equatable, Sendable {
 
 public struct CommandRequest: Codable, Equatable, Sendable {
     public var command: Command
-    /// `GameState.version` aus dem letzten `state`, den der Client gesehen hat.
+    /// `GameState.version` of the last `state` the client saw.
     public var stateVersion: Int
 
     public init(command: Command, stateVersion: Int) {
@@ -62,12 +62,17 @@ public enum ServerMessage: Equatable, Sendable {
     case error(String)
 }
 
+/// Machine-readable codes sent as the payload of `ServerMessage.error`.
+public enum WireErrorCode: String, Sendable {
+    case versionMismatch, tableFull, gameInProgress, helloRequired, malformed, removed
+}
+
 public enum WireError: Error, Equatable {
     case versionMismatch(Int)
     case unknownType(String)
 }
 
-/// JSON-Umschlag `{"v": 1, "type": "<case>", "id": "<UUID>", "payload": …}`, siehe docs/PROTOCOL.md.
+/// JSON envelope `{"v": 1, "type": "<case>", "id": "<UUID>", "payload": …}`, see docs/PROTOCOL.md.
 public enum Wire {
     public static let version = 1
     public static let serviceType = "_pokerchipcase._tcp"
@@ -119,6 +124,11 @@ public enum Wire {
         case "error": return (h.id, .error(try payload(data)))
         default: throw WireError.unknownType(h.type)
         }
+    }
+
+    /// The envelope `id` of a message, if its header can be read (even when the payload cannot).
+    public static func envelopeID(_ data: Data) -> UUID? {
+        try? decoder.decode(Header.self, from: data).id
     }
 
     private struct Envelope<P: Encodable>: Encodable {

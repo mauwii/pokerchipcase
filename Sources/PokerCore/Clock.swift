@@ -9,7 +9,7 @@ extension BlindClock {
         return max(0, levelEndsAt.timeIntervalSince(now))
     }
 
-    /// Schaltet abgelaufene Levels weiter; das letzte Level bleibt bestehen.
+    /// Advances expired levels; the last level stays forever.
     mutating func advance(to now: Date, levels: [BlindLevel]) {
         guard !isPaused, var endsAt = levelEndsAt else { return }
         while levelIndex < levels.count - 1, now >= endsAt {

@@ -39,8 +39,8 @@ public struct TournamentConfig: Codable, Equatable, Sendable {
     public static let relaxed = standard(levelDuration: 1200)
     public static let quick = standard(levelDuration: 600)
     public static let presets: [(name: String, config: TournamentConfig)] = [
-        ("Gemütlich – 20 Min", relaxed),
-        ("Schnell – 10 Min", quick),
+        ("Relaxed – 20 min", relaxed),
+        ("Quick – 10 min", quick),
     ]
 }
 
@@ -48,16 +48,16 @@ public struct Seat: Codable, Equatable, Sendable {
     public var id: PlayerID
     public var name: String
     public var stack: Chips
-    /// Einsatz in der aktuellen Setzrunde.
+    /// Bet in the current betting round.
     public var roundBet: Chips = 0
-    /// Einsatz in der gesamten Hand.
+    /// Bet in the whole hand.
     public var handBet: Chips = 0
     public var stackAtHandStart: Chips = 0
     public var folded = false
     public var allIn = false
     public var acted = false
     public var mayRaise = true
-    /// Platzierung; nil solange der Spieler im Turnier ist (und für den Sieger).
+    /// Final rank; nil while the player is still in the tournament (and for the winner).
     public var eliminatedRank: Int?
 
     public init(id: PlayerID, name: String, stack: Chips) {
@@ -108,7 +108,7 @@ public struct GameState: Codable, Equatable, Sendable {
     public var toActIndex: Int?
     public var pots: [Pot] = []
     public var clock = BlindClock()
-    /// Steigt mit jeder Änderung (auch Undo); Clients senden sie mit, damit verspätete Doppeltipps abgelehnt werden.
+    /// Increases with every change (undo too); clients send it back so late double taps get rejected.
     public var version = 0
 
     public init(config: TournamentConfig, hostID: PlayerID, seats: [Seat]) {

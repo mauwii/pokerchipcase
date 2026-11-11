@@ -43,7 +43,7 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
         .state(g.state),
         .welcome(Welcome(player: "B", token: "secret")),
         .ack(Ack(id: id1, result: .ok)),
-        .error("kaputt"),
+        .error("broken"),
     ] {
         let decoded = try Wire.decodeServer(Wire.encode(message, id: id1))
         #expect(decoded.id == id1 && decoded.message == message)

@@ -5,7 +5,7 @@ let t0 = Date(timeIntervalSince1970: 0)
 let tenTwenty = [BlindLevel(smallBlind: 10, bigBlind: 20, duration: 600)]
 
 extension Game {
-    /// Host = erster Spieler. Stacks werden in der Lobby gesetzt, dann startTournament(button:) bei t0.
+    /// Host = first player. Stacks are set in the lobby, then startTournament(button:) at t0.
     static func started(
         _ stacks: KeyValuePairs<PlayerID, Chips> = ["A": 1000, "B": 1000, "C": 1000],
         levels: [BlindLevel] = tenTwenty,
@@ -25,14 +25,14 @@ extension Game {
 
     var toAct: PlayerID? { state.toActIndex.map { state.seats[$0].id } }
 
-    /// Checkt bzw. callt, bis keine Setzrunde mehr läuft.
+    /// Checks or calls until no betting round is running.
     mutating func checkDown() throws(Rejection) {
         while state.phase == .betting, let p = toAct {
             try act(state.legalActions(for: p)!.canCheck ? .check : .call)
         }
     }
 
-    /// Wendet act(player: toAct, action:) an.
+    /// Applies act(player: toAct, action:).
     mutating func act(_ action: Action, at now: Date = t0) throws(Rejection) {
         guard let p = toAct else { throw .notYourTurn }
         try apply(.act(player: p, action: action), by: p, at: now)

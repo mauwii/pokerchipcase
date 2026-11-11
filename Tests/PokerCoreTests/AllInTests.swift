@@ -43,6 +43,6 @@ import Testing
 @Test func raiseToFullStackIsAllIn() throws {
     var g = try Game.started(["A": 1000, "B": 1000, "C": 150])
     try g.act(.raiseTo(amount: 100)); try g.act(.call)
-    try g.act(.raiseTo(amount: 150))     // C' gesamter Stack, unter minRaiseTo 180
+    try g.act(.raiseTo(amount: 150))     // C's whole stack, below minRaiseTo 180
     #expect(g.state.seat("C")?.allIn == true && g.state.currentBet == 150)
 }

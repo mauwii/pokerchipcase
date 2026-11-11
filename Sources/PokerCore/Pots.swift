@@ -1,4 +1,4 @@
-/// Teilt `amount` gleichmäßig; Restchips einzeln an die Gewinner in Sitzreihenfolge ab dem ersten Sitz links vom Button.
+/// Splits `amount` evenly; odd chips go one by one to the winners in seat order, starting left of the button.
 func split(_ amount: Chips, among winners: [PlayerID], seats: [Seat], buttonIndex: Int) -> [PlayerID: Chips] {
     var shares = Dictionary(uniqueKeysWithValues: winners.map { ($0, amount / winners.count) })
     let order = (1...seats.count).map { seats[(buttonIndex + $0) % seats.count].id }.filter(winners.contains)
@@ -8,8 +8,8 @@ func split(_ amount: Chips, among winners: [PlayerID], seats: [Seat], buttonInde
     return shares
 }
 
-/// Teilt die Einsätze der Hand in Haupt- und Side-Pots (Hauptpot zuerst).
-/// Pot-Grenzen entstehen nur durch All-ins von Spielern, die noch in der Hand sind.
+/// Splits the hand's bets into main and side pots (main pot first).
+/// Pot boundaries come only from all-ins of players still in the hand.
 func computePots(_ seats: [Seat]) -> [Pot] {
     let live = seats.filter { !$0.folded }
     let allInLevels = live.filter(\.allIn).map(\.handBet)
@@ -28,7 +28,7 @@ func computePots(_ seats: [Seat]) -> [Pot] {
             pots.append(Pot(amount: amount, eligible: eligible))
         }
     }
-    // Einsätze gefoldeter Spieler über dem höchsten Live-Einsatz gehören in den obersten Pot.
+    // Folded players' bets above the highest live bet belong to the top pot.
     let dead = seats.reduce(0) { $0 + max(0, $1.handBet - prev) }
     if dead > 0, !pots.isEmpty { pots[pots.count - 1].amount += dead }
     return pots

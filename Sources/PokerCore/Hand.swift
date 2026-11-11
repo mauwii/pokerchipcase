@@ -6,7 +6,7 @@ extension GameState {
 
     var activeSeatCount: Int { seats.count { !$0.isEliminated } }
 
-    /// Nächster Sitz nach `i` (im Uhrzeigersinn, `i` selbst zuletzt), der `where` erfüllt.
+    /// Next seat after `i` (clockwise, `i` itself last) that satisfies `where`.
     func next(after i: Int, where predicate: (Seat) -> Bool) -> Int? {
         (1...seats.count).lazy.map { (i + $0) % seats.count }.first { predicate(seats[$0]) }
     }
@@ -15,7 +15,7 @@ extension GameState {
         next(after: i) { !$0.isEliminated }!
     }
 
-    /// Ausgeschiedene Sitze gelten als gefoldet, damit alle Hand-Logik nur `folded` prüfen muss.
+    /// Eliminated seats count as folded, so all hand logic only has to check `folded`.
     mutating func startHand() {
         phase = .betting
         street = .preflop
@@ -54,7 +54,7 @@ extension GameState {
 
     func needsToAct(_ s: Seat) -> Bool { canAct(s) && (!s.acted || s.roundBet < currentBet) }
 
-    /// nil, wenn niemand mehr handeln muss – auch wenn nur noch einer setzen könnte und er bereits gleichgezogen hat.
+    /// nil when nobody has to act anymore – including when only one player could still bet and has already matched.
     func nextToAct(after i: Int) -> Int? {
         guard let n = next(after: i, where: needsToAct) else { return nil }
         if seats.count(where: canAct) == 1, seats[n].roundBet >= currentBet { return nil }
@@ -97,7 +97,7 @@ extension GameState {
         afterAction(by: i)
     }
 
-    /// Volles Raise: öffnet die Setzrunde für alle anderen erneut.
+    /// Full raise: reopens the betting round for everyone else.
     mutating func raise(to x: Chips, seat i: Int) {
         post(x - seats[i].roundBet, seat: i)
         lastRaiseSize = x - currentBet
@@ -108,7 +108,7 @@ extension GameState {
         }
     }
 
-    /// All-in als Call, volles Raise oder unvollständiges Raise (öffnet Raises nicht für Spieler, die schon gehandelt haben).
+    /// All-in as a call, a full raise or an incomplete raise (does not reopen raising for players who already acted).
     mutating func goAllIn(seat i: Int) throws(Rejection) {
         let x = seats[i].roundBet + seats[i].stack
         if x <= currentBet {
@@ -141,7 +141,7 @@ extension GameState {
     }
 
     mutating func endRound() {
-        // Höchstens einer kann noch setzen: keine Setzrunde mehr, restliche Karten werden ohne Setzen aufgedeckt.
+        // At most one player can still bet: no more betting, the remaining cards are dealt without betting.
         if seats.count(where: canAct) <= 1 { return enterShowdown() }
         let nextStreet: Street
         switch street {
@@ -167,7 +167,7 @@ extension GameState {
         pots = []
         for pot in computePots(seats) {
             if pot.eligible.count == 1, let j = index(of: pot.eligible[0]) {
-                // Ungecallter Einsatz geht zurück.
+                // Uncalled bet goes back.
                 seats[j].stack += pot.amount
                 seats[j].handBet -= pot.amount
             } else {
@@ -191,7 +191,7 @@ extension GameState {
         completeHand()
     }
 
-    /// Einsätze sind verteilt: Hand abschließen.
+    /// Bets are paid out: finish the hand.
     mutating func completeHand() {
         for j in seats.indices {
             seats[j].roundBet = 0
@@ -203,7 +203,7 @@ extension GameState {
         eliminateBusted()
     }
 
-    /// Spieler ohne Chips scheiden aus; bei mehreren platziert sich besser, wer zu Handbeginn mehr hatte.
+    /// Players without chips are eliminated; among several, whoever had more at hand start places better.
     mutating func eliminateBusted() {
         let remaining = activeSeatCount
         let busted = seats.indices
@@ -215,7 +215,7 @@ extension GameState {
         if activeSeatCount <= 1 { phase = .finished }
     }
 
-    /// Sieger bzw. noch Spielende zuerst (nach Stack), dann Ausgeschiedene nach Platzierung.
+    /// Winner or players still in first (by stack), then eliminated players by rank.
     public var ranking: [Seat] {
         seats.sorted {
             switch ($0.eliminatedRank, $1.eliminatedRank) {
@@ -233,7 +233,7 @@ extension GameState {
         startHand()
     }
 
-    /// Entfernt einen Spieler aus dem laufenden Turnier; seine Chips verfallen.
+    /// Removes a player from the running tournament; their chips are forfeited.
     mutating func removeFromGame(seat i: Int) throws(Rejection) {
         switch phase {
         case .betting:
@@ -253,9 +253,9 @@ extension GameState {
 
 public struct LegalActions: Equatable, Sendable {
     public var canCheck: Bool
-    /// Zusätzliche Chips zum Callen; 0, wenn Check möglich ist.
+    /// Additional chips needed to call; 0 when checking is possible.
     public var callAmount: Chips
-    /// nil = Raise nicht erlaubt.
+    /// nil = raising not allowed.
     public var minRaiseTo: Chips?
     public var maxRaiseTo: Chips?
 
