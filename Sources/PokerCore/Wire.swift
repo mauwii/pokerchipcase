@@ -39,9 +39,20 @@ public struct Ack: Codable, Equatable, Sendable {
     }
 }
 
+public struct CommandRequest: Codable, Equatable, Sendable {
+    public var command: Command
+    /// `GameState.version` aus dem letzten `state`, den der Client gesehen hat.
+    public var stateVersion: Int
+
+    public init(command: Command, stateVersion: Int) {
+        self.command = command
+        self.stateVersion = stateVersion
+    }
+}
+
 public enum ClientMessage: Equatable, Sendable {
     case hello(Hello)
-    case command(Command)
+    case command(CommandRequest)
 }
 
 public enum ServerMessage: Equatable, Sendable {

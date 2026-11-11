@@ -7,7 +7,7 @@ import Testing
     let before = g.state
     try g.act(.raiseTo(amount: 100))
     try g.apply(.undo, by: "A", at: t0)
-    #expect(g.state == before)
+    #expect(g.state.ignoringVersion == before.ignoringVersion)
 }
 
 @Test func undoAfterShowdownRestoresChips() throws {
@@ -16,7 +16,15 @@ import Testing
     let atShowdown = g.state
     try g.apply(.resolveShowdown(winners: [["B"]]), by: "A", at: t0)
     try g.apply(.undo, by: "A", at: t0)
-    #expect(g.state == atShowdown)
+    #expect(g.state.ignoringVersion == atShowdown.ignoringVersion)
+}
+
+private extension GameState {
+    var ignoringVersion: GameState {
+        var s = self
+        s.version = 0
+        return s
+    }
 }
 
 @Test func undoOnlyHost() throws {

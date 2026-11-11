@@ -34,4 +34,6 @@ public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case tooFewPlayers
     case invalidShowdown
     case nothingToUndo
+    /// Befehl bezog sich auf einen veralteten Zustand.
+    case staleState
 }

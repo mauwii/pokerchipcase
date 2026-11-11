@@ -7,9 +7,10 @@ private let id1 = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self) }
 
 @Test func commandGoldenJSON() throws {
-    let data = try Wire.encode(ClientMessage.command(.act(player: "B", action: .raiseTo(amount: 60))), id: id1)
+    let request = CommandRequest(command: .act(player: "B", action: .raiseTo(amount: 60)), stateVersion: 7)
+    let data = try Wire.encode(ClientMessage.command(request), id: id1)
     #expect(json(data) ==
-        #"{"id":"00000000-0000-0000-0000-000000000001","payload":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"type":"command","v":1}"#)
+        #"{"id":"00000000-0000-0000-0000-000000000001","payload":{"command":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"stateVersion":7},"type":"command","v":1}"#)
 }
 
 @Test func ackGoldenJSON() throws {
@@ -27,8 +28,8 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
 @Test func clientRoundTrip() throws {
     for message: ClientMessage in [
         .hello(Hello(protocolVersion: 1, name: "Ben", token: "t")),
-        .command(.resolveShowdown(winners: [["A", "B"]])),
-        .command(.undo),
+        .command(CommandRequest(command: .resolveShowdown(winners: [["A", "B"]]), stateVersion: 3)),
+        .command(CommandRequest(command: .undo, stateVersion: 0)),
     ] {
         let decoded = try Wire.decodeClient(Wire.encode(message, id: id1))
         #expect(decoded.id == id1 && decoded.message == message)

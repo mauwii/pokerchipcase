@@ -108,6 +108,8 @@ public struct GameState: Codable, Equatable, Sendable {
     public var toActIndex: Int?
     public var pots: [Pot] = []
     public var clock = BlindClock()
+    /// Steigt mit jeder Änderung (auch Undo); Clients senden sie mit, damit verspätete Doppeltipps abgelehnt werden.
+    public var version = 0
 
     public init(config: TournamentConfig, hostID: PlayerID, seats: [Seat]) {
         self.config = config

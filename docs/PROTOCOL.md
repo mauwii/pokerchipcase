@@ -9,7 +9,8 @@ Dieses Dokument beschreibt alles, was ein kompatibler Client (z. B. eine Android
 | Discovery | Bonjour/mDNS, Diensttyp `_pokerchipcase._tcp`, Instanzname = Tischname |
 | Verbindung | WebSocket (Textframes mit UTF-8-JSON) über TLS über TCP |
 | TLS | TLS 1.2, Pre-Shared-Key, Cipher Suite `TLS_PSK_WITH_AES_128_GCM_SHA256` |
-| PSK | HKDF-SHA256 über den 4-stelligen Tisch-Code (UTF-8), Salt `pokerchipcase-v1` (UTF-8), 32 Byte Ausgabe |
+| PSK | HKDF-SHA256: Eingabe = 4-stelliger Tisch-Code (UTF-8), Salt = `pokerchipcase-v1` (UTF-8), Info = `pokerchipcase-psk` (UTF-8), 32 Byte Ausgabe |
+| PSK-Identity | `pokerchipcase` (UTF-8) |
 | Peer-to-Peer | Auf iOS zusätzlich über AWDL (`includePeerToPeer`); andere Plattformen nutzen das gemeinsame WLAN |
 
 Ein falscher Tisch-Code lässt den TLS-Handshake scheitern.
@@ -23,7 +24,7 @@ Jede Nachricht in beide Richtungen:
 ```
 
 - `v` – Protokollversion. Weicht sie ab, wird die Nachricht abgelehnt.
-- `id` – vom Absender erzeugte UUID (Großbuchstaben, mit Bindestrichen).
+- `id` – vom Absender erzeugte UUID mit Bindestrichen. iOS schreibt Großbuchstaben; Empfänger vergleichen ohne Beachtung der Groß-/Kleinschreibung.
 - `type` – bestimmt die Form von `payload`.
 - Datumswerte sind Millisekunden seit 1970-01-01 UTC als Zahl.
 - Dauern (`duration`, `pausedRemaining`) sind Sekunden als Zahl.
@@ -52,8 +53,10 @@ Aufzählungen ohne Werte (`Phase`, `Street`, `Rejection`) sind einfache Strings.
 ### `command` – jeder Spielbefehl
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"type":"command","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"command":{"act":{"action":{"raiseTo":{"amount":60}},"player":"B"}},"stateVersion":7},"type":"command","v":1}
 ```
+
+`stateVersion` ist `version` aus dem letzten empfangenen `state`. Passt sie nicht mehr zum Host, wird der Befehl mit `staleState` abgelehnt. So werden Doppeltipps verworfen, die erst nach einer Zustandsänderung ankommen.
 
 | Befehl | Felder | Wer darf |
 |---|---|---|
@@ -62,12 +65,23 @@ Aufzählungen ohne Werte (`Phase`, `Street`, `Rejection`) sind einfache Strings.
 | `arrangeSeats` | `order` (alle Spieler-IDs) | Host, nur in der Lobby |
 | `startTournament` | `button` | Host, mindestens 2 Spieler |
 | `act` | `player`, `action` | der Spieler selbst, wenn er dran ist; der Host zusätzlich `fold`/`check` für andere |
-| `resolveShowdown` | `winners` (pro Pot eine Liste von Spieler-IDs) | Dealer der Hand |
+| `resolveShowdown` | `winners`: pro Pot eine Liste von Spieler-IDs, in derselben Reihenfolge wie `state.pots`; jede Liste nicht leer, ohne Duplikate, nur IDs aus `eligible` | Dealer der Hand oder Host |
 | `startNextHand` | – | Dealer der Hand oder Host |
 | `pauseClock`, `resumeClock` | – | Host |
 | `undo` | – | Host |
 
 Aktionen (`action`): `fold`, `check`, `call`, `raiseTo` mit `amount` (Gesamteinsatz in dieser Setzrunde; Bet, wenn noch niemand gesetzt hat), `allIn`.
+
+### Erlaubte Aktionen ableiten
+
+`state` enthält keine Liste erlaubter Aktionen. Für den Spieler am Zug (`seats[toActIndex]`, im Folgenden `s`) gilt:
+
+- `toCall = max(0, currentBet − s.roundBet)`
+- **Check** erlaubt, wenn `toCall == 0`; sonst **Call** über `min(toCall, s.stack)` Chips.
+- `allInTo = s.roundBet + s.stack`
+- **Raise** erlaubt, wenn `s.mayRaise` und `allInTo > currentBet`. Dann ist `raiseTo.amount` zwischen `min(currentBet + lastRaiseSize, allInTo)` und `allInTo`.
+- `raiseTo` mit `amount == allInTo` und `allIn` sind immer gleichwertig, auch unter dem Mindest-Raise. Ein All-in, das über `currentBet` hinausgeht, braucht aber `mayRaise`.
+- **Fold** ist immer erlaubt.
 
 ## Host → Client
 
@@ -79,15 +93,15 @@ Aktionen (`action`): `fold`, `check`, `call`, `raiseTo` mit `amount` (Gesamteins
 
 Das Token geheim halten und für Reconnects aufbewahren.
 
-### `ack` – Antwort auf jede Client-Nachricht
+### `ack` – Antwort auf jeden `command`
 
 ```json
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"id":"00000000-0000-0000-0000-000000000001","result":{"rejected":{"reason":"notYourTurn"}}},"type":"ack","v":1}
 ```
 
-`payload.id` ist die `id` der beantworteten Nachricht. `result` ist `{"ok":{}}` oder `{"rejected":{"reason":"<Rejection>"}}`.
+`payload.id` ist die `id` des beantworteten `command`. `hello` bekommt kein `ack`, sondern `welcome` + `state` oder `error`. `result` ist `{"ok":{}}` oder `{"rejected":{"reason":"<Rejection>"}}`.
 
-Gründe: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidShowdown`, `nothingToUndo`.
+Gründe: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidShowdown`, `nothingToUndo`, `staleState`.
 
 ### `state` – kompletter Tischzustand
 
@@ -104,6 +118,7 @@ Wird nach jeder Änderung an alle Clients gesendet. Die wichtigsten Felder von `
 | `pots[]` | nur im Showdown: `amount`, `eligible` (Spieler-IDs) |
 | `clock` | `levelIndex`, `levelEndsAt` (Datum) oder `pausedRemaining` (Sekunden) |
 | `config` | `startingStack`, `levels[]` mit `smallBlind`, `bigBlind`, `duration` |
+| `version` | steigt mit jeder Änderung; als `stateVersion` in `command` zurücksenden |
 | `hostID`, `handNumber` | |
 
 Clients zeigen nur an, was im letzten `state` steht, und ändern ihn nie selbst.

@@ -20,7 +20,7 @@ Eine iOS-App, die beim Texas-Hold'em-Abend unter Freunden den Pokerkoffer ersetz
 | Verschlüsselung | TLS mit Pre-Shared-Key, abgeleitet aus einem Tisch-Code |
 | Autorität | Der Host ist die einzige Wahrheit. Clients senden nur Wünsche und zeigen den vom Host gesendeten Zustand an |
 | Host | Ein Spieler-Handy (spielt mit). Separate Tisch-Anzeige (iPad) später |
-| Karten/Showdown | App kennt keine Karten. Der Dealer der Hand wählt pro Pot den/die Gewinner |
+| Karten/Showdown | App kennt keine Karten. Der Dealer der Hand wählt pro Pot den/die Gewinner; der Host kann es ersatzweise tun |
 
 ## Nicht im Umfang (MVP)
 
