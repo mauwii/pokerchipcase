@@ -136,7 +136,7 @@ extension GameState {
     mutating func enterShowdown() {
         phase = .showdown
         toActIndex = nil
-        pots = [Pot(amount: potTotal, eligible: seats.filter { !$0.folded }.map(\.id))]
+        pots = computePots(seats)
     }
 
     /// Einsätze sind verteilt: Hand abschließen.
