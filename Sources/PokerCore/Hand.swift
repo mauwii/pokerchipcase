@@ -39,6 +39,7 @@ extension GameState {
         currentBet = level.bigBlind
         lastRaiseSize = level.bigBlind
         toActIndex = nextToAct(after: bb)
+        if toActIndex == nil { endRound() }
     }
 
     mutating func post(_ amount: Chips, seat i: Int) {
@@ -80,12 +81,14 @@ extension GameState {
         case .call:
             guard currentBet > seats[i].roundBet else { throw .illegalAction }
             post(min(currentBet - seats[i].roundBet, seats[i].stack), seat: i)
+        case let .raiseTo(x) where x == seats[i].roundBet + seats[i].stack:
+            try goAllIn(seat: i)
         case let .raiseTo(x):
             guard seats[i].mayRaise else { throw .illegalAction }
             guard x >= minRaiseTo, x <= seats[i].roundBet + seats[i].stack else { throw .invalidAmount }
             raise(to: x, seat: i)
         case .allIn:
-            throw .illegalAction
+            try goAllIn(seat: i)
         }
         seats[i].acted = true
         afterAction(by: i)
@@ -102,6 +105,26 @@ extension GameState {
         }
     }
 
+    /// All-in als Call, volles Raise oder unvollständiges Raise (öffnet Raises nicht für Spieler, die schon gehandelt haben).
+    mutating func goAllIn(seat i: Int) throws(Rejection) {
+        let x = seats[i].roundBet + seats[i].stack
+        if x <= currentBet {
+            post(seats[i].stack, seat: i)
+            return
+        }
+        guard seats[i].mayRaise else { throw .illegalAction }
+        if x - currentBet >= lastRaiseSize {
+            raise(to: x, seat: i)
+            return
+        }
+        post(seats[i].stack, seat: i)
+        currentBet = x
+        for j in seats.indices where j != i && canAct(seats[j]) {
+            if seats[j].acted { seats[j].mayRaise = false }
+            seats[j].acted = false
+        }
+    }
+
     mutating func afterAction(by i: Int) {
         let inHand = seats.indices.filter { !seats[$0].folded }
         if inHand.count == 1 {
@@ -115,6 +138,8 @@ extension GameState {
     }
 
     mutating func endRound() {
+        // Höchstens einer kann noch setzen: keine Setzrunde mehr, restliche Karten werden ohne Setzen aufgedeckt.
+        if seats.count(where: canAct) <= 1 { return enterShowdown() }
         let nextStreet: Street
         switch street {
         case .preflop: nextStreet = .flop
@@ -136,7 +161,16 @@ extension GameState {
     mutating func enterShowdown() {
         phase = .showdown
         toActIndex = nil
-        pots = computePots(seats)
+        pots = []
+        for pot in computePots(seats) {
+            if pot.eligible.count == 1, let j = index(of: pot.eligible[0]) {
+                // Ungecallter Einsatz geht zurück.
+                seats[j].stack += pot.amount
+                seats[j].handBet -= pot.amount
+            } else {
+                pots.append(pot)
+            }
+        }
     }
 
     /// Einsätze sind verteilt: Hand abschließen.
