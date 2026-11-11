@@ -1,0 +1,39 @@
+name: PokerChipCase
+options:
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  PokerChipCase:
+    path: ..
+targets:
+  PokerChipCase:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    configFiles:
+      Debug: Config/App.xcconfig
+      Release: Config/App.xcconfig
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: PokerChipCase
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSLocalNetworkUsageDescription: PokerChipCase uses the local network to find, host and join poker tables nearby.
+        NSBonjourServices: [_pokerchipcase._tcp]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    dependencies:
+      - package: PokerChipCase
+        products: [PokerCore, PokerNet, PokerSession]
+schemes:
+  PokerChipCase:
+    build:
+      targets:
+        PokerChipCase: all

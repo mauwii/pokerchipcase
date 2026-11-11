@@ -1,0 +1,4 @@
+PRODUCT_BUNDLE_IDENTIFIER = io.github.mauwii.pokerchipcase
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Automatic
+#include? "Local.xcconfig"

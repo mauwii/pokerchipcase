@@ -4,3 +4,5 @@ DerivedData/
 *.xcodeproj
 .DS_Store
 .superpowers/
+App/Info.plist
+App/Config/Local.xcconfig
