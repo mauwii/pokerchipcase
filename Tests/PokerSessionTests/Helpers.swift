@@ -1,5 +1,6 @@
 import Foundation
 import PokerNet
+import PokerSession
 @testable import PokerCore
 
 let t0 = Date(timeIntervalSince1970: 0)
@@ -27,4 +28,9 @@ extension Game {
         let p = state.seats[i].id
         try apply(.act(player: p, action: action), by: p, at: t0)
     }
+}
+
+/// A save file in a fresh, not yet existing temporary directory.
+func tempFile<V>(_ name: String = "save.json") -> SaveFile<V> {
+    SaveFile(url: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString).appending(path: name))
 }
