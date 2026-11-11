@@ -5,23 +5,15 @@ import PokerCore
 /// Server for one table: owns the snapshot, accepts connections, applies commands and broadcasts state.
 public actor TableHost {
     public private(set) var snapshot: HostSnapshot
-    private let tableName: String
-    private let code: TableCode
     private let onChange: @Sendable (HostSnapshot) -> Void
     private let queue = DispatchQueue(label: "pokernet.host")
     private var listener: NWListener?
     private var channels: [UUID: MessageChannel] = [:]
     private var bound: [UUID: PlayerID] = [:]
 
-    public init(
-        snapshot: HostSnapshot,
-        tableName: String,
-        code: TableCode,
-        onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }
-    ) {
+    /// `onChange` receives every new snapshot; persist it to resume after a crash.
+    public init(snapshot: HostSnapshot, onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) {
         self.snapshot = snapshot
-        self.tableName = tableName
-        self.code = code
         self.onChange = onChange
     }
 
@@ -29,8 +21,8 @@ public actor TableHost {
 
     /// Starts listening and returns the bound port.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
-        let listener = try NWListener(using: PSK.parameters(code: code), on: port)
-        listener.service = NWListener.Service(name: tableName, type: Wire.serviceType)
+        let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
+        listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
         listener.newConnectionHandler = { [weak self] connection in
             Task { await self?.accept(connection) }
         }

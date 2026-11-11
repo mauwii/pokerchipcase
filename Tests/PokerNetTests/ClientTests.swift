@@ -49,7 +49,7 @@ private actor SilentHost {
                 for try await event in channel.events {
                     guard case let .message(data) = event, case .hello = try Wire.decodeClient(data).message else { continue }
                     channel.send(try Wire.encode(ServerMessage.welcome(Welcome(player: "B", token: "t")), id: UUID()))
-                    let state = HostSnapshot.newTable(hostName: "Anna", config: .relaxed).game.state
+                    let state = testSnapshot().game.state
                     channel.send(try Wire.encode(ServerMessage.state(state), id: UUID()))
                 }
             } catch {}

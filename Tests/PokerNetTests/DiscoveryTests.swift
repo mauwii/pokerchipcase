@@ -10,7 +10,7 @@ private let discoveryTimeout: Duration = .seconds(15)
 /// Starts a host advertising a unique table name.
 private func advertisedHost() async throws -> (TableHost, String) {
     let name = "Kitchen-\(UUID().uuidString.prefix(6))"
-    let host = TableHost(snapshot: .newTable(hostName: "Anna", config: .relaxed), tableName: name, code: code4711)
+    let host = TableHost(snapshot: .newTable(hostName: "Anna", tableName: name, code: code4711, config: .relaxed))
     _ = try await host.start()
     return (host, name)
 }

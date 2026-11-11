@@ -128,13 +128,18 @@ final class RawClient: Sendable {
     func close() { channel.cancel() }
 }
 
+/// New table hosted by "Anna", named "Test", code 4711.
+func testSnapshot() -> HostSnapshot {
+    .newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
+}
+
 /// Starts a host with a new table "Anna" (or `snapshot`) on loopback.
 func startHost(
-    _ snapshot: HostSnapshot = .newTable(hostName: "Anna", config: .relaxed),
+    _ snapshot: HostSnapshot = testSnapshot(),
     port: NWEndpoint.Port = .any,
     onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }
 ) async throws -> (TableHost, NWEndpoint.Port) {
-    let host = TableHost(snapshot: snapshot, tableName: "Test", code: code4711, onChange: onChange)
+    let host = TableHost(snapshot: snapshot, onChange: onChange)
     return (host, try await host.start(port: port))
 }
 

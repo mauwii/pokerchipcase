@@ -6,7 +6,7 @@ import Testing
 
 /// Snapshot with `guests` additional players (IDs "G0"…).
 private func snapshot(guests: Int, started: Bool = false) throws -> HostSnapshot {
-    var snap = HostSnapshot.newTable(hostName: "Anna", config: .relaxed)
+    var snap = testSnapshot()
     let hostID = snap.game.state.hostID
     for i in 0..<guests {
         try snap.game.apply(.join(player: "G\(i)", name: "G\(i)"), by: hostID, at: .now)
@@ -121,6 +121,17 @@ struct HostLobbyTests {
         _ = try await ben.welcome()
         try await eventually { await inbox.last?.tokens.count == 2 }
         #expect(await inbox.last?.game.state.seats.count == 2)
+        await host.stop()
+    }
+
+    @Test func snapshotCarriesCodeAndTableName() async throws {
+        let snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Kitchen", code: TableCode("1234")!, config: .relaxed)
+        let decoded = try Wire.decoder.decode(HostSnapshot.self, from: Wire.encoder.encode(snap))
+        #expect(decoded == snap && decoded.tableName == "Kitchen" && decoded.code == TableCode("1234"))
+        let (host, port) = try await startHost(decoded)
+        let ben = try await RawClient.connect(port, code: TableCode("1234")!)
+        ben.send(hello("Ben"))
+        _ = try await ben.welcome()
         await host.stop()
     }
 
