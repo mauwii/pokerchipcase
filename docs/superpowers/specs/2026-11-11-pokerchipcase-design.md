@@ -16,7 +16,7 @@ Eine iOS-App, die beim Texas-Hold'em-Abend unter Freunden den Pokerkoffer ersetz
 | Lizenz | Open Source, MIT (verträgt sich mit App Store; GPL nicht) |
 | Android | Nicht von uns. Dokumentiertes Protokoll (`docs/PROTOCOL.md`) ermöglicht Community-Portierungen, die am selben Tisch mitspielen können |
 | Spielvariante | No-Limit Texas Hold'em, Turnier. Cash Game später |
-| Kommunikation | Lokal, ohne Internet: WebSocket über `Network.framework`, Bonjour-Discovery, `includePeerToPeer = true` (funktioniert mit Router **und** direkt Handy-zu-Handy per AWDL) |
+| Kommunikation | Lokal, ohne Internet: zeilenweises JSON über TLS/TCP mit `Network.framework`, Bonjour-Discovery, `includePeerToPeer = true` (funktioniert mit Router **und** direkt Handy-zu-Handy per AWDL) |
 | Verschlüsselung | TLS mit Pre-Shared-Key, abgeleitet aus einem Tisch-Code |
 | Autorität | Der Host ist die einzige Wahrheit. Clients senden nur Wünsche und zeigen den vom Host gesendeten Zustand an |
 | Host | Ein Spieler-Handy (spielt mit). Separate Tisch-Anzeige (iPad) später |
@@ -89,7 +89,7 @@ Der Zustand enthält keine Geheimnisse (alle Stacks sind öffentlich), daher bek
 
 ### PokerNet
 
-- **Host:** `NWListener` mit TCP + TLS-PSK + WebSocket, veröffentlicht Bonjour-Dienst `_pokerchipcase._tcp` mit Tischnamen.
+- **Host:** `NWListener` mit TCP + TLS-PSK, eine JSON-Nachricht pro Zeile (WebSocket verworfen: der Handshake braucht URL-Endpoints, Bonjour/AWDL liefern Service-Endpoints), veröffentlicht Bonjour-Dienst `_pokerchipcase._tcp` mit Tischnamen.
 - **Client:** `NWBrowser` listet Tische in der Nähe; Verbindung mit denselben Parametern.
 - Beide mit `includePeerToPeer = true`.
 - Das Host-Gerät verbindet sich intern als normaler Client mit seinem eigenen Server – ein einziger Code-Pfad.

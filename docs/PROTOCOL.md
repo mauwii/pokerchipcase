@@ -7,13 +7,14 @@ Dieses Dokument beschreibt alles, was ein kompatibler Client (z. B. eine Android
 | | |
 |---|---|
 | Discovery | Bonjour/mDNS, Diensttyp `_pokerchipcase._tcp`, Instanzname = Tischname |
-| Verbindung | WebSocket (Textframes mit UTF-8-JSON) über TLS über TCP |
+| Verbindung | TCP mit TLS; darin eine Nachricht pro Zeile: UTF-8-JSON, abgeschlossen mit `\n` (0x0A), höchstens 1 MiB pro Zeile |
 | TLS | TLS 1.2, Pre-Shared-Key, Cipher Suite `TLS_PSK_WITH_AES_128_GCM_SHA256` |
 | PSK | HKDF-SHA256: Eingabe = 4-stelliger Tisch-Code (UTF-8), Salt = `pokerchipcase-v1` (UTF-8), Info = `pokerchipcase-psk` (UTF-8), 32 Byte Ausgabe |
 | PSK-Identity | `pokerchipcase` (UTF-8) |
+| PSK-Testvektor | Code `4711` → `67a659eb4579867f3873c0e9311b75f65b3d6d0b7c0c7cdc7687d0fb78f423f2` (hex) |
 | Peer-to-Peer | Auf iOS zusätzlich über AWDL (`includePeerToPeer`); andere Plattformen nutzen das gemeinsame WLAN |
 
-Ein falscher Tisch-Code lässt den TLS-Handshake scheitern.
+Ein falscher Tisch-Code lässt den TLS-Handshake scheitern. JSON wird kompakt kodiert und enthält daher nie einen rohen Zeilenumbruch. Längere Zeilen beendet die Gegenseite mit Verbindungsabbruch.
 
 ## Umschlag
 
