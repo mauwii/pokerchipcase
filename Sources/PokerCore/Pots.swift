@@ -28,5 +28,8 @@ func computePots(_ seats: [Seat]) -> [Pot] {
             pots.append(Pot(amount: amount, eligible: eligible))
         }
     }
+    // Einsätze gefoldeter Spieler über dem höchsten Live-Einsatz gehören in den obersten Pot.
+    let dead = seats.reduce(0) { $0 + max(0, $1.handBet - prev) }
+    if dead > 0, !pots.isEmpty { pots[pots.count - 1].amount += dead }
     return pots
 }

@@ -54,8 +54,11 @@ extension GameState {
 
     func needsToAct(_ s: Seat) -> Bool { canAct(s) && (!s.acted || s.roundBet < currentBet) }
 
+    /// nil, wenn niemand mehr handeln muss – auch wenn nur noch einer setzen könnte und er bereits gleichgezogen hat.
     func nextToAct(after i: Int) -> Int? {
-        next(after: i, where: needsToAct)
+        guard let n = next(after: i, where: needsToAct) else { return nil }
+        if seats.count(where: canAct) == 1, seats[n].roundBet >= currentBet { return nil }
+        return n
     }
 
     public func legalActions(for player: PlayerID) -> LegalActions? {
