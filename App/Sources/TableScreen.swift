@@ -24,7 +24,7 @@ struct TableScreen: View {
                     if state.phase == .lobby {
                         LobbyView(session: session, state: state)
                     } else {
-                        Text(state.phase.rawValue)
+                        TableView(session: session, state: state)
                     }
                 } else {
                     ProgressView("Connecting…")
