@@ -5,12 +5,12 @@ import PokerCore
 
 struct TimeoutError: Error {}
 
-/// Sammelt Ereignisse eines Streams; `first(where:)` wartet höchstens `timeout`.
+/// Records a stream's events; `first(where:)` waits at most `timeout`.
 actor EventRecorder<Event: Sendable> {
     private var events: [Event] = []
     private var end: (any Error)?? = nil
 
-    /// Liest `stream` in einem eigenen Task mit; funktioniert für AsyncStream und AsyncThrowingStream.
+    /// Reads `stream` in its own task; works for AsyncStream and AsyncThrowingStream.
     init<S: AsyncSequence & Sendable>(_ stream: S) where S.Element == Event {
         Task {
             do {
@@ -27,7 +27,7 @@ actor EventRecorder<Event: Sendable> {
 
     var all: [Event] { events }
 
-    /// Wie `first`, entfernt aber das gefundene Ereignis und alle davor – für "nächstes Ereignis"-Semantik.
+    /// Like `first`, but removes the found event and all before it – "next event" semantics.
     func take(timeout: Duration = .seconds(5), where predicate: @Sendable (Event) -> Bool) async throws -> Event {
         let e = try await first(timeout: timeout, where: predicate)
         let i = events.firstIndex(where: predicate)!
@@ -44,7 +44,7 @@ actor EventRecorder<Event: Sendable> {
         throw TimeoutError()
     }
 
-    /// Wartet auf das Stream-Ende; liefert den Fehler, mit dem er endete (nil = sauber beendet).
+    /// Waits for the stream to end; returns the error it ended with (nil = finished cleanly).
     func waitForEnd(timeout: Duration = .seconds(5)) async throws -> (any Error)? {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
@@ -55,7 +55,7 @@ actor EventRecorder<Event: Sendable> {
     }
 }
 
-/// Wartet, bis `condition` wahr ist (höchstens `timeout`).
+/// Waits until `condition` is true (at most `timeout`).
 func eventually(timeout: Duration = .seconds(5), _ condition: @Sendable () async -> Bool) async throws {
     let deadline = ContinuousClock.now + timeout
     while ContinuousClock.now < deadline {
@@ -78,7 +78,7 @@ func hello(_ name: String, token: String? = nil, version: Int = Wire.version) ->
     .hello(Hello(protocolVersion: version, name: name, token: token))
 }
 
-/// Roher Protokoll-Client ohne TableClient-Logik.
+/// Raw protocol client without TableClient logic.
 final class RawClient: Sendable {
     private let channel: MessageChannel
     private let recorder: EventRecorder<ChannelEvent>
@@ -101,7 +101,7 @@ final class RawClient: Sendable {
 
     func sendRaw(_ data: Data) { channel.send(data) }
 
-    /// Nächste Server-Nachricht, die `predicate` erfüllt (ältere werden verworfen).
+    /// Next server message matching `predicate` (older ones are discarded).
     func next(where predicate: @escaping @Sendable (ServerMessage) -> Bool) async throws -> ServerMessage {
         let event = try await recorder.take {
             guard case let .message(d) = $0, let m = try? Wire.decodeServer(d).message else { return false }
@@ -122,7 +122,7 @@ final class RawClient: Sendable {
     func close() { channel.cancel() }
 }
 
-/// Startet einen Host mit neuem Tisch "Anna" (oder `snapshot`) auf Loopback.
+/// Starts a host with a new table "Anna" (or `snapshot`) on loopback.
 func startHost(
     _ snapshot: HostSnapshot = .newTable(hostName: "Anna", config: .relaxed),
     port: NWEndpoint.Port = .any,
@@ -136,22 +136,7 @@ func loopback(_ port: NWEndpoint.Port) -> NWEndpoint {
     .hostPort(host: "127.0.0.1", port: port)
 }
 
-/// Wartet, bis der Listener bereit ist, und liefert seinen Port.
-func waitReady(_ listener: NWListener) async throws -> NWEndpoint.Port {
-    let (stream, cont) = AsyncThrowingStream<NWEndpoint.Port, Error>.makeStream()
-    listener.stateUpdateHandler = { state in
-        switch state {
-        case .ready: cont.yield(listener.port!); cont.finish()
-        case let .failed(e): cont.finish(throwing: e)
-        default: break
-        }
-    }
-    listener.start(queue: .global())
-    for try await port in stream { return port }
-    throw TimeoutError()
-}
-
-/// NWListener mit PSK-Parametern; jede neue Verbindung wird zum Echo-Kanal.
+/// NWListener with PSK parameters; every new connection becomes an echo channel.
 func startEchoListener(code: TableCode) async throws -> (NWListener, NWEndpoint.Port) {
     let listener = try NWListener(using: PSK.parameters(code: code), on: .any)
     listener.newConnectionHandler = { connection in
@@ -165,5 +150,5 @@ func startEchoListener(code: TableCode) async throws -> (NWListener, NWEndpoint.
         }
         channel.start()
     }
-    return (listener, try await waitReady(listener))
+    return (listener, try await listener.startAndWaitUntilReady(queue: .global()))
 }

@@ -12,9 +12,9 @@ enum ChannelError: Error, Equatable {
     case messageTooLarge
 }
 
-/// Eine Verbindung als Nachrichten-Stream: jede Nachricht ist eine Zeile, abgeschlossen mit `\n`.
-/// Der Stream endet mit der Verbindung.
-/// ponytail: @unchecked Sendable, NWConnection und `buffer` werden nur über `queue` angesprochen
+/// A connection as a message stream: each message is one line terminated by `\n`.
+/// The stream ends with the connection.
+/// ponytail: @unchecked Sendable, NWConnection and `buffer` are only touched on `queue`
 final class MessageChannel: @unchecked Sendable {
     static let maxMessageSize = 1_048_576
     private static let newline = UInt8(ascii: "\n")
@@ -52,7 +52,7 @@ final class MessageChannel: @unchecked Sendable {
         connection.start(queue: queue)
     }
 
-    /// Sendet eine Nachricht (ohne Zeilenumbruch darin); Fehler zeigen sich als Stream-Ende.
+    /// Sends one message (must not contain a newline); failures surface as the end of the stream.
     func send(_ data: Data) {
         connection.send(content: data + [Self.newline], completion: .idempotent)
     }

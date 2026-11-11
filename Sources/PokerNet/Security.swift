@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import Network
 
-/// TLS 1.2 mit Pre-Shared-Key aus dem Tisch-Code, siehe docs/PROTOCOL.md.
+/// TLS 1.2 with a pre-shared key derived from the table code, see docs/PROTOCOL.md.
 enum PSK {
     static let identity = "pokerchipcase"
 
@@ -15,7 +15,7 @@ enum PSK {
         )
     }
 
-    /// TCP + TLS-PSK, auch Peer-to-Peer (AWDL).
+    /// TCP + TLS-PSK, also peer-to-peer (AWDL).
     static func parameters(code: TableCode) -> NWParameters {
         let tls = NWProtocolTLS.Options()
         let sec = tls.securityProtocolOptions

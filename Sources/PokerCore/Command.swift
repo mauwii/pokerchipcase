@@ -2,7 +2,7 @@ public enum Action: Codable, Equatable, Sendable {
     case fold
     case check
     case call
-    /// Erhöht den eigenen Gesamteinsatz in dieser Setzrunde auf `amount` (Bet, wenn noch niemand gesetzt hat).
+    /// Raises the player's total bet in this betting round to `amount` (a bet if nobody has bet yet).
     case raiseTo(amount: Chips)
     case allIn
 }
@@ -13,7 +13,7 @@ public enum Command: Codable, Equatable, Sendable {
     case arrangeSeats(order: [PlayerID])
     case startTournament(button: PlayerID)
     case act(player: PlayerID, action: Action)
-    /// Pro Pot (in der Reihenfolge von `GameState.pots`) die Gewinner.
+    /// Winners per pot, in the order of `GameState.pots`.
     case resolveShowdown(winners: [[PlayerID]])
     case startNextHand
     case pauseClock
@@ -34,6 +34,6 @@ public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case tooFewPlayers
     case invalidShowdown
     case nothingToUndo
-    /// Befehl bezog sich auf einen veralteten Zustand.
+    /// The command was based on an outdated state.
     case staleState
 }

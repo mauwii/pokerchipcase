@@ -8,9 +8,9 @@ private func chipsInPlay(_ g: Game) -> Chips {
 
 @Test func lonePlayerWhoMatchedIsNotAskedToAct() throws {
     var g = try Game.started(["A": 5, "B": 15, "C": 1000])
-    try g.act(.call); try g.act(.call)          // A all-in 5, B all-in 15; C hat 20 gesetzt
+    try g.act(.call); try g.act(.call)          // A all-in 5, B all-in 15; C has 20 in
     #expect(g.state.phase == .showdown)
-    #expect(g.state.seat("C")?.stack == 985)    // 5 ungecallt zurück
+    #expect(g.state.seat("C")?.stack == 985)    // 5 uncalled, returned
     #expect(chipsInPlay(g) == 1020)
 }
 
@@ -39,7 +39,7 @@ private func chipsInPlay(_ g: Game) -> Chips {
     #expect(computePots([a, b, c]) == [Pot(amount: 300, eligible: ["B", "C"]), Pot(amount: 500, eligible: ["C"])])
 }
 
-/// SplitMix64: deterministischer Zufall für reproduzierbare Turniere.
+/// SplitMix64: deterministic randomness for reproducible tournaments.
 private struct SeededRNG: RandomNumberGenerator {
     var state: UInt64
     mutating func next() -> UInt64 {
@@ -91,7 +91,7 @@ private struct SeededRNG: RandomNumberGenerator {
 }
 
 private extension LegalActions {
-    /// All-in ist erlaubt, wenn es höchstens ein Call ist oder Raisen erlaubt ist.
+    /// All-in is allowed if it is at most a call or raising is allowed.
     func mayRaiseAllIn(_ s: GameState, _ p: PlayerID) -> Bool {
         let seat = s.seat(p)!
         return seat.roundBet + seat.stack <= s.currentBet || minRaiseTo != nil

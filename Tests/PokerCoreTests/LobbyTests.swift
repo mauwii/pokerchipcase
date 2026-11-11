@@ -52,5 +52,5 @@ import Testing
 @Test func presetsStartAtTenTwenty() {
     #expect(TournamentConfig.relaxed.levels.first == BlindLevel(smallBlind: 10, bigBlind: 20, duration: 1200))
     #expect(TournamentConfig.quick.levels.first?.duration == 600)
-    #expect(TournamentConfig.presets.map(\.name) == ["Gemütlich – 20 Min", "Schnell – 10 Min"])
+    #expect(TournamentConfig.presets.map(\.name) == ["Relaxed – 20 min", "Quick – 10 min"])
 }

@@ -24,10 +24,10 @@ struct ChannelTests {
         let rec = EventRecorder(channel.events)
         channel.start()
         _ = try await rec.first { $0 == .ready }
-        channel.send(Data("eins".utf8))
-        channel.send(Data("zwei".utf8))
-        _ = try await rec.first { $0 == .message(Data("zwei".utf8)) }
-        #expect(await rec.all == [.ready, .message(Data("eins".utf8)), .message(Data("zwei".utf8))])
+        channel.send(Data("one".utf8))
+        channel.send(Data("two".utf8))
+        _ = try await rec.first { $0 == .message(Data("two".utf8)) }
+        #expect(await rec.all == [.ready, .message(Data("one".utf8)), .message(Data("two".utf8))])
         channel.cancel()
     }
 
@@ -38,8 +38,8 @@ struct ChannelTests {
         let rec = EventRecorder(channel.events)
         channel.start()
         _ = try await rec.first { $0 == .ready }
-        channel.send(Data("hallo".utf8))
-        _ = try await rec.first { $0 == .message(Data("hallo".utf8)) }
+        channel.send(Data("hello".utf8))
+        _ = try await rec.first { $0 == .message(Data("hello".utf8)) }
         channel.cancel()
     }
 

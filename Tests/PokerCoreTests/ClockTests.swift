@@ -7,7 +7,7 @@ private let twoLevels = [
     BlindLevel(smallBlind: 20, bigBlind: 40, duration: 600),
 ]
 
-/// Hand 1 per Fold-Fold beendet.
+/// Hand 1 finished by fold, fold.
 private func afterFirstHand() throws -> Game {
     var g = try Game.started(levels: twoLevels)
     try g.act(.fold); try g.act(.fold)

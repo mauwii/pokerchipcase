@@ -1,4 +1,4 @@
-/// 4-stelliger Tisch-Code; aus ihm wird der TLS-Schlüssel abgeleitet.
+/// 4-digit table code; the TLS key is derived from it.
 public struct TableCode: Hashable, Codable, Sendable {
     public let digits: String
 

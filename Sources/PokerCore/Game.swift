@@ -14,8 +14,8 @@ public struct Game: Codable, Equatable, Sendable {
         )
     }
 
-    /// Wendet einen Befehl atomar an: bei einer `Rejection` bleibt das Spiel unverändert.
-    /// `expectedVersion`: die `state.version`, die der Absender zuletzt gesehen hat (nil = keine Prüfung).
+    /// Applies a command atomically: on a `Rejection` the game stays unchanged.
+    /// `expectedVersion`: the `state.version` the sender saw last (nil = no check).
     public mutating func apply(
         _ command: Command, by actor: PlayerID, at now: Date, expectedVersion: Int? = nil
     ) throws(Rejection) {

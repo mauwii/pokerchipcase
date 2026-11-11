@@ -4,7 +4,7 @@ import PokerCore
 import Testing
 @testable import PokerNet
 
-/// Schnappschuss mit `guests` zusätzlichen Spielern (IDs "G1"…).
+/// Snapshot with `guests` additional players (IDs "G0"…).
 private func snapshot(guests: Int, started: Bool = false) throws -> HostSnapshot {
     var snap = HostSnapshot.newTable(hostName: "Anna", config: .relaxed)
     let hostID = snap.game.state.hostID
@@ -36,7 +36,7 @@ struct HostLobbyTests {
     @Test func hostTokenIdentifiesHost() async throws {
         let (host, port) = try await startHost()
         let anna = try await RawClient.connect(port)
-        anna.send(hello("egal", token: await host.snapshot.hostToken))
+        anna.send(hello("whatever", token: await host.snapshot.hostToken))
         let w = try await anna.welcome()
         #expect(w.player == (await host.snapshot.game.state.hostID))
         #expect(try await anna.state().seats.count == 1)
@@ -59,7 +59,7 @@ struct HostLobbyTests {
     @Test func unknownTokenJoinsAsNewPlayer() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)
-        ben.send(hello("Ben", token: "gibtsnicht"))
+        ben.send(hello("Ben", token: "unknown"))
         _ = try await ben.welcome()
         #expect(try await ben.state().seats.count == 2)
         await host.stop()
