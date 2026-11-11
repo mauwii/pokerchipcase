@@ -57,6 +57,14 @@ final class MessageChannel: @unchecked Sendable {
         connection.send(content: data + [Self.newline], completion: .idempotent)
     }
 
+    /// Sends a last message, then closes the connection gracefully.
+    func sendAndClose(_ data: Data) {
+        connection.send(
+            content: data + [Self.newline], contentContext: .finalMessage, isComplete: true,
+            completion: .contentProcessed { [connection] _ in connection.cancel() }
+        )
+    }
+
     func cancel() {
         connection.cancel()
     }
