@@ -73,7 +73,18 @@ extension GameState {
         case .startNextHand:
             guard phase == .handComplete else { throw .invalidPhase }
             guard actor == dealerID || actor == hostID else { throw .notDealer }
+            clock.advance(to: now, levels: config.levels)
             startNextHand()
+
+        case .pauseClock:
+            guard actor == hostID else { throw .notHost }
+            guard phase != .lobby, phase != .finished, !clock.isPaused else { throw .invalidPhase }
+            clock.pause(at: now)
+
+        case .resumeClock:
+            guard actor == hostID else { throw .notHost }
+            guard clock.isPaused else { throw .invalidPhase }
+            clock.resume(at: now)
 
         default:
             throw .invalidPhase
