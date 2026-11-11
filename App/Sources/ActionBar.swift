@@ -49,7 +49,6 @@ struct ActionBar: View {
         .disabled(disabled)
         .padding(.bottom)
         .onChange(of: state.version, initial: true) { raiseTo = legal?.minRaiseTo ?? 0 }
-        .sensoryFeedback(.impact(weight: .heavy), trigger: legal != nil) { !$0 && $1 }
         .confirmationDialog("All-in with \(stack) chips?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
                             titleVisibility: .visible) {
             Button("All-in", role: .destructive) {

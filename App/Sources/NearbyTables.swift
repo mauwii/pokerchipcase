@@ -6,14 +6,18 @@ import SwiftUI
     var tables: [DiscoveredTable] = []
     var localNetworkDenied = false
 
-    /// Browses with a fresh TableBrowser until the calling task is cancelled, then stops it.
+    /// Browses until the calling task is cancelled; a failed browser (iOS kills it in the background)
+    /// is replaced by a fresh one after a second.
     func run() async {
-        let browser = TableBrowser()  // single-use
-        browser.start()
-        defer { browser.stop() }
-        async let list: Void = follow(browser.tables)
-        async let status: Void = follow(browser.status)
-        _ = await (list, status)
+        while !Task.isCancelled {
+            let browser = TableBrowser()  // single-use
+            browser.start()
+            async let list: Void = follow(browser.tables)
+            await follow(browser.status)  // returns on .failed or cancellation
+            browser.stop()
+            await list
+            try? await Task.sleep(for: .seconds(1))
+        }
     }
 
     private func follow(_ stream: AsyncStream<[DiscoveredTable]>) async {
@@ -25,7 +29,7 @@ import SwiftUI
             switch status {
             case .localNetworkDenied: localNetworkDenied = true
             case .browsing: localNetworkDenied = false
-            case .failed: break
+            case .failed: return
             }
         }
     }

@@ -137,15 +137,27 @@ struct SessionTests {
         #expect(anna.state?.seats.count == 2)
     }
 
-    @Test func failedJoinDeletesTicket() async throws {
+    @Test func failedRejoinDeletesTicket() async throws {
         let anna = try await hostSession()
         defer { Task { await anna.leave() } }
         let tickets: SaveFile<SeatTicket> = tempFile()
-        try tickets.save(SeatTicket(tableName: "Old", code: code4711, name: "Ben", token: "old"))
-        let ben = await guestSession(anna, code: TableCode("0815")!, ticketFile: tickets)
+        try tickets.save(SeatTicket(tableName: "Test", code: code4711, name: "Ben", token: "old"))
+        let ben = await guestSession(anna, token: "old", code: TableCode("0815")!, ticketFile: tickets)
         defer { Task { await ben.leave() } }
         try await eventually { ben.connection == .failed(.wrongCode) }
         #expect(tickets.load() == nil)
+    }
+
+    @Test func failedTokenlessJoinKeepsTicket() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let tickets: SaveFile<SeatTicket> = tempFile()
+        let old = SeatTicket(tableName: "Old", code: code4711, name: "Ben", token: "old")
+        try tickets.save(old)
+        let ben = await guestSession(anna, code: TableCode("0815")!, ticketFile: tickets)
+        defer { Task { await ben.leave() } }
+        try await eventually { ben.connection == .failed(.wrongCode) }
+        #expect(tickets.load() == old)
     }
 
     @Test func leaveDeletesSaveFiles() async throws {

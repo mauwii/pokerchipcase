@@ -58,7 +58,12 @@ struct StartView: View {
         .sheet(item: $joining) { table in
             JoinSheet(table: table) { code in
                 let name = name
-                connect { await TableSession.join(endpoint: table.endpoint, tableName: table.name, code: code, name: name) }
+                // Same table as the stored ticket: rejoin its seat instead of taking a new one.
+                let token = ticket.flatMap { $0.tableName == table.name && $0.code == code ? $0.token : nil }
+                connect {
+                    await TableSession.join(endpoint: table.endpoint, tableName: table.name, code: code, name: name,
+                                            token: token)
+                }
             }
         }
         .alert("Could not open the table", isPresented: $failed) {}

@@ -33,9 +33,12 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
     private let name: String
     private let saveFile: SaveFile<HostSnapshot>?
     private let ticketFile: SaveFile<SeatTicket>?
+    /// Started from the stored ticket's token, so a failure may delete that ticket.
+    private let fromTicket: Bool
 
     private init(tableName: String, code: TableCode, name: String, client: TableClient, tableHost: TableHost?,
-                 port: NWEndpoint.Port?, saveFile: SaveFile<HostSnapshot>?, ticketFile: SaveFile<SeatTicket>?) {
+                 port: NWEndpoint.Port?, saveFile: SaveFile<HostSnapshot>?, ticketFile: SaveFile<SeatTicket>?,
+                 fromTicket: Bool = false) {
         self.tableName = tableName
         self.code = code
         self.name = name
@@ -44,6 +47,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         self.port = port
         self.saveFile = saveFile
         self.ticketFile = ticketFile
+        self.fromTicket = fromTicket
     }
 
     /// Hosts `snapshot` (new or resumed) and joins it over loopback with the host token.
@@ -66,7 +70,8 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
                             token: String? = nil, ticketFile: SaveFile<SeatTicket> = .seat) async -> TableSession {
         let client = TableClient(endpoint: endpoint, code: code, name: name, token: token)
         let session = TableSession(tableName: tableName, code: code, name: name, client: client,
-                                   tableHost: nil, port: nil, saveFile: nil, ticketFile: ticketFile)
+                                   tableHost: nil, port: nil, saveFile: nil, ticketFile: ticketFile,
+                                   fromTicket: token != nil)
         await session.start()
         return session
     }
@@ -122,7 +127,8 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
             connection = .reconnecting
         case let .failed(failure):
             connection = .failed(failure)
-            ticketFile?.delete()
+            // Only our own ticket: one we rejoined with or saved on welcome, never another table's.
+            if fromTicket || me != nil { ticketFile?.delete() }
         }
     }
 }

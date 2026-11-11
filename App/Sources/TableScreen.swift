@@ -36,6 +36,8 @@ struct TableScreen: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle(session.tableName)
             .safeAreaInset(edge: .top) { banner }
+            // Here, not in ActionBar: that is re-inserted every hand with the trigger already true.
+            .sensoryFeedback(.impact(weight: .heavy), trigger: session.legalActions != nil) { !$0 && $1 }
             .toolbar {
                 Menu("Table", systemImage: "ellipsis.circle") {
                     if session.isHost, let state = session.state, state.phase != .lobby {
@@ -47,7 +49,7 @@ struct TableScreen: View {
             }
             .hostConfirmation($hostPending, session: session)
             .confirmationDialog(
-                session.isHost ? "End the table for everyone?" : "Leave the table? Your seat stays until the host removes it.",
+                session.isHost ? "End the table for everyone?" : "Leave the table? You can't rejoin once the tournament has started.",
                 isPresented: $confirmLeave, titleVisibility: .visible
             ) {
                 Button(session.isHost ? "End table" : "Leave table", role: .destructive) { leave() }
