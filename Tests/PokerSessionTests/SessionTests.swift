@@ -38,6 +38,25 @@ struct SessionTests {
         try await eventually { ben.state?.phase == .betting && ben.rejection == nil }
     }
 
+    @Test func turnAndDealerDecideWhatEachPlayerMayDo() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let ben = await guestSession(anna)
+        defer { Task { await ben.leave() } }
+        try await eventually { anna.state?.seats.count == 2 && ben.state?.seats.count == 2 }
+        #expect(anna.canRunHand && !ben.canRunHand)
+        await anna.send(.startTournament(button: ben.me!))
+        try await eventually { anna.state?.phase == .betting && ben.state?.phase == .betting }
+        #expect(ben.canRunHand)
+        let state = try #require(ben.state)
+        let toAct = state.seats[try #require(state.toActIndex)].id
+        let (actor, other) = toAct == ben.me ? (ben, anna) : (anna, ben)
+        #expect(actor.legalActions != nil && other.legalActions == nil)
+        await actor.act(.call)
+        #expect(actor.rejection == nil)
+        try await eventually { other.state?.seat(toAct)?.acted == true && actor.legalActions == nil }
+    }
+
     @Test func hostSavesEveryChange() async throws {
         let file: SaveFile<HostSnapshot> = tempFile()
         let anna = try await hostSession(file)
@@ -94,6 +113,8 @@ struct SessionTests {
         let resumed = try await TableSession.host(snap, saveFile: file, port: port)
         defer { Task { await resumed.leave() } }
         try await eventually { resumed.state?.phase == .betting && resumed.me == snap.game.state.hostID }
+        // ben still shows .connected until it notices the drop; only the new host proves the reconnect.
+        try await eventually { await resumed.tableHost!.connectedPlayers.contains(p!) }
         try await eventually { ben.connection == .connected && ben.me == p }
     }
 
