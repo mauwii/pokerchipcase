@@ -30,6 +30,7 @@ public actor TableHost {
     /// Starts listening and returns the bound port.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
         let listener = try NWListener(using: PSK.parameters(code: code), on: port)
+        listener.service = NWListener.Service(name: tableName, type: Wire.serviceType)
         listener.newConnectionHandler = { [weak self] connection in
             Task { await self?.accept(connection) }
         }
