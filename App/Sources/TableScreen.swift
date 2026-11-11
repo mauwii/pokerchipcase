@@ -7,6 +7,7 @@ struct TableScreen: View {
     let session: TableSession
     let onLeave: () -> Void
     @State private var confirmLeave = false
+    @State private var hostPending: HostConfirm?
 
     init(session: TableSession, onLeave: @escaping () -> Void) {
         self.session = session
@@ -37,9 +38,14 @@ struct TableScreen: View {
             .safeAreaInset(edge: .top) { banner }
             .toolbar {
                 Menu("Table", systemImage: "ellipsis.circle") {
+                    if session.isHost, let state = session.state, state.phase != .lobby {
+                        HostMenu(session: session, state: state, pending: $hostPending)
+                        Divider()
+                    }
                     Button(session.isHost ? "End table" : "Leave table", role: .destructive) { confirmLeave = true }
                 }
             }
+            .hostConfirmation($hostPending, session: session)
             .confirmationDialog(
                 session.isHost ? "End the table for everyone?" : "Leave the table? Your seat stays until the host removes it.",
                 isPresented: $confirmLeave, titleVisibility: .visible
