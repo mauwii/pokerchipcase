@@ -21,7 +21,11 @@ struct TableScreen: View {
         NavigationStack {
             Group {
                 if let state = session.state {
-                    Text(state.phase.rawValue)
+                    if state.phase == .lobby {
+                        LobbyView(session: session, state: state)
+                    } else {
+                        Text(state.phase.rawValue)
+                    }
                 } else {
                     ProgressView("Connecting…")
                 }
