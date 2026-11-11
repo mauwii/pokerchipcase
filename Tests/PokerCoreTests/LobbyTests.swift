@@ -2,8 +2,6 @@ import Foundation
 import Testing
 @testable import PokerCore
 
-private let t0 = Date(timeIntervalSince1970: 0)
-
 @Test func hostIsSeatedOnCreation() {
     let g = Game(hostID: "A", hostName: "Anna", config: .relaxed)
     #expect(g.state.phase == .lobby)

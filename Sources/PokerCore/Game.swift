@@ -44,6 +44,15 @@ extension GameState {
             guard phase == .lobby else { throw .invalidPhase }
             seats.remove(at: i)
 
+        case let .startTournament(button):
+            try requireLobbyHost(actor)
+            guard seats.count >= 2 else { throw .tooFewPlayers }
+            guard let b = index(of: button) else { throw .unknownPlayer }
+            buttonIndex = b
+            handNumber = 1
+            clock.levelEndsAt = now + config.levels[0].duration
+            startHand()
+
         default:
             throw .invalidPhase
         }
