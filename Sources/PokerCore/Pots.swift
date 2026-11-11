@@ -1,3 +1,13 @@
+/// Teilt `amount` gleichmäßig; Restchips einzeln an die Gewinner in Sitzreihenfolge ab dem ersten Sitz links vom Button.
+func split(_ amount: Chips, among winners: [PlayerID], seats: [Seat], buttonIndex: Int) -> [PlayerID: Chips] {
+    var shares = Dictionary(uniqueKeysWithValues: winners.map { ($0, amount / winners.count) })
+    let order = (1...seats.count).map { seats[(buttonIndex + $0) % seats.count].id }.filter(winners.contains)
+    for id in order.prefix(amount % winners.count) {
+        shares[id]! += 1
+    }
+    return shares
+}
+
 /// Teilt die Einsätze der Hand in Haupt- und Side-Pots (Hauptpot zuerst).
 /// Pot-Grenzen entstehen nur durch All-ins von Spielern, die noch in der Hand sind.
 func computePots(_ seats: [Seat]) -> [Pot] {

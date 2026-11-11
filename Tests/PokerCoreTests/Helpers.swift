@@ -25,6 +25,13 @@ extension Game {
 
     var toAct: PlayerID? { state.toActIndex.map { state.seats[$0].id } }
 
+    /// Checkt bzw. callt, bis keine Setzrunde mehr läuft.
+    mutating func checkDown() throws(Rejection) {
+        while state.phase == .betting, let p = toAct {
+            try act(state.legalActions(for: p)!.canCheck ? .check : .call)
+        }
+    }
+
     /// Wendet act(player: toAct, action:) an.
     mutating func act(_ action: Action, at now: Date = t0) throws(Rejection) {
         guard let p = toAct else { throw .notYourTurn }

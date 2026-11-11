@@ -173,6 +173,21 @@ extension GameState {
         }
     }
 
+    mutating func resolveShowdown(_ winners: [[PlayerID]]) throws(Rejection) {
+        guard winners.count == pots.count else { throw .invalidShowdown }
+        for (pot, ws) in zip(pots, winners) {
+            guard !ws.isEmpty, Set(ws).count == ws.count, ws.allSatisfy(pot.eligible.contains) else {
+                throw .invalidShowdown
+            }
+        }
+        for (pot, ws) in zip(pots, winners) {
+            for (id, chips) in split(pot.amount, among: ws, seats: seats, buttonIndex: buttonIndex!) {
+                seats[index(of: id)!].stack += chips
+            }
+        }
+        completeHand()
+    }
+
     /// Einsätze sind verteilt: Hand abschließen.
     mutating func completeHand() {
         for j in seats.indices {

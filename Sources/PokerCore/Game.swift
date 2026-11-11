@@ -62,6 +62,11 @@ extension GameState {
             }
             try perform(action, by: i)
 
+        case let .resolveShowdown(winners):
+            guard phase == .showdown else { throw .invalidPhase }
+            guard actor == dealerID else { throw .notDealer }
+            try resolveShowdown(winners)
+
         default:
             throw .invalidPhase
         }
