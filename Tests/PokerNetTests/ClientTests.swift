@@ -252,4 +252,14 @@ struct ClientTests {
         #expect(await events.all.compactMap(\.welcome).count == 1)
         #expect(!(await events.all.contains(.connectionLost)))
     }
+
+    @Test func releasedClientClosesItsConnection() async throws {
+        let (host, port) = try await startHost()
+        var ben: TableClient? = TableClient(endpoint: loopback(port), code: code4711, name: "Ben")
+        await ben?.connect()
+        try await eventually { await host.connectedPlayers.count == 1 }
+        ben = nil
+        try await eventually { await host.connectedPlayers.isEmpty }
+        await host.stop()
+    }
 }
