@@ -95,6 +95,7 @@ public actor TableHost {
     }
 
     private func receive(_ data: Data, from id: UUID) {
+        guard channels[id] != nil else { return }
         // Errors reuse the request's envelope id so the sender can match them to its command.
         let messageID: UUID
         let message: ClientMessage
@@ -139,6 +140,9 @@ public actor TableHost {
     }
 
     private func welcome(_ hello: Hello, from id: UUID, requestID: UUID?) {
+        guard bound[id] == nil else {
+            return send(.error(WireErrorCode.malformed.rawValue), to: id, envelopeID: requestID)
+        }
         guard hello.protocolVersion == Wire.version else { return reject(.versionMismatch, id, replyTo: requestID) }
         let player: PlayerID
         let token: String
