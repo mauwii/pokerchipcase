@@ -57,6 +57,6 @@ public struct SeatTicket: Codable, Equatable, Sendable {
 extension HostSnapshot {
     /// The save can be resumed: the host has a token and the tournament is not finished.
     public var isResumable: Bool {
-        tokens.values.contains(game.state.hostID) && game.state.phase != .finished
+        hostToken != nil && game.state.phase != .finished
     }
 }

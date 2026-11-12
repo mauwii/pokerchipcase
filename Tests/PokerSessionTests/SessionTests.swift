@@ -179,6 +179,12 @@ struct SessionTests {
         #expect(file.load() == nil)
     }
 
+    @Test func snapshotWithoutHostTokenThrows() async throws {
+        var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
+        snap.tokens = [:]
+        await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: tempFile()) }
+    }
+
     @Test func appBecameActiveReconnectsTheHostClient() async throws {
         let anna = try await hostSession()
         defer { Task { await anna.leave() } }

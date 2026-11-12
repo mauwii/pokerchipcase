@@ -50,7 +50,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna","protocolVersion":1},"type":"hello","v":1}
 ```
 
-Send `hello` exactly once per connection, as the first message. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host closes the older connection without sending it a message.
+Send `hello` exactly once per connection, as the first message. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host closes the older connection without sending it a message. A second `hello` on the same connection is answered with `malformed`.
 
 ### `command` – every game command
 
@@ -139,7 +139,7 @@ Clients only display what the last `state` says and never change it themselves.
 | `tableFull` | already 10 players | closed |
 | `gameInProgress` | tournament running, new players can no longer join (reconnecting with a token still works) | closed |
 | `helloRequired` | `command` before `hello` | stays open |
-| `malformed` | message could not be read | stays open |
+| `malformed` | message could not be read, or a second `hello` | stays open |
 | `removed` | the player was removed from the table (or their join was undone); the token is no longer valid | closed |
 
 ## Flow

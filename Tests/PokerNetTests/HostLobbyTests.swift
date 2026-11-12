@@ -83,6 +83,30 @@ struct HostLobbyTests {
         await host.stop()
     }
 
+    @Test func messagesAfterRejectionAreIgnored() async throws {
+        let (host, port) = try await startHost()
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben", version: 2))
+        ben.send(hello("Cem"))
+        try await ben.waitForClose()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(await host.snapshot.game.state.seats.map(\.name) == ["Anna"])
+        await host.stop()
+    }
+
+    @Test func secondHelloIsMalformedAndDoesNotJoinAgain() async throws {
+        let (host, port) = try await startHost()
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben"))
+        _ = try await ben.welcome()
+        let id = UUID()
+        ben.send(hello("Ben"), id: id)
+        let reply = try await ben.nextEnvelope { $0.error != nil }
+        #expect(reply.message.error == WireErrorCode.malformed.rawValue && reply.id == id)
+        #expect(await host.snapshot.game.state.seats.map(\.name) == ["Anna", "Ben"])
+        await host.stop()
+    }
+
     @Test func joinAfterStartRejected() async throws {
         let (host, port) = try await startHost(snapshot(guests: 1, started: true))
         let cem = try await RawClient.connect(port)
