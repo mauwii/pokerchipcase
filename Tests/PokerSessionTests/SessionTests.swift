@@ -179,6 +179,20 @@ struct SessionTests {
         #expect(file.load() == nil)
     }
 
+    @Test func failedStartRestoresThePreviousSave() async throws {
+        let blocker = try await hostSession()  // occupies its port
+        defer { Task { await blocker.leave() } }
+        let empty: SaveFile<HostSnapshot> = tempFile()
+        let new = HostSnapshot.newTable(hostName: "Cem", tableName: "New", code: code4711, config: .relaxed)
+        await #expect(throws: (any Error).self) { try await TableSession.host(new, saveFile: empty, port: blocker.port!) }
+        #expect(empty.load() == nil)
+        let old: SaveFile<HostSnapshot> = tempFile()
+        let saved = HostSnapshot.newTable(hostName: "Ben", tableName: "Old", code: code4711, config: .relaxed)
+        try old.save(saved)
+        await #expect(throws: (any Error).self) { try await TableSession.host(new, saveFile: old, port: blocker.port!) }
+        #expect(old.load() == saved)
+    }
+
     @Test func snapshotWithoutHostTokenThrows() async throws {
         var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
         snap.tokens = [:]

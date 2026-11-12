@@ -11,10 +11,18 @@ struct StartView: View {
     @State private var ticket: SeatTicket?
     @State private var creating = false
     @State private var joining: DiscoveredTable?
+    @State private var confirmDiscard = false
     @State private var failed = false
     @State private var busy = false
 
     private var name: String { playerName.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// "<name>'s table", with the name shortened so it fits the 63-byte Bonjour service name.
+    private var defaultTableName: String {
+        var short = name
+        while "\(short)'s table".utf8.count > 63 { short.removeLast() }
+        return "\(short)'s table"
+    }
 
     var body: some View {
         NavigationStack {
@@ -34,7 +42,7 @@ struct StartView: View {
                         Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }
                         Button("Discard", role: .destructive) { SaveFile.seat.delete(); reload() }
                     }
-                    Button("Create table") { creating = true }
+                    Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
                 .disabled(name.isEmpty || busy)
                 if busy { ProgressView().frame(maxWidth: .infinity) }
@@ -51,7 +59,7 @@ struct StartView: View {
         .task { await nearby.run() }
         .onAppear(perform: reload)
         .sheet(isPresented: $creating) {
-            CreateTableSheet(defaultName: "\(name)'s table", busy: busy) { tableName, config in
+            CreateTableSheet(defaultName: defaultTableName, busy: busy) { tableName, config in
                 host(.newTable(hostName: name, tableName: tableName, config: config))
             }
         }
@@ -65,6 +73,9 @@ struct StartView: View {
                                             token: token)
                 }
             }
+        }
+        .confirmationDialog("Discard the saved game?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button("Discard and create", role: .destructive) { creating = true }
         }
         .alert("Could not open the table", isPresented: $failed) {}
     }
@@ -110,10 +121,18 @@ private struct CreateTableSheet: View {
     @State private var tableName = ""
     @State private var preset = 0
 
+    private var finalName: String {
+        let trimmed = tableName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? defaultName : trimmed
+    }
+    /// Bonjour service names are limited to 63 UTF-8 bytes.
+    private var tooLong: Bool { finalName.utf8.count > 63 }
+
     var body: some View {
         NavigationStack {
             Form {
                 TextField("Table name", text: $tableName)
+                if tooLong { Text("Name is too long").foregroundStyle(.red) }
                 Picker("Blinds", selection: $preset) {
                     ForEach(TournamentConfig.presets.indices, id: \.self) { Text(TournamentConfig.presets[$0].name).tag($0) }
                 }
@@ -123,11 +142,10 @@ private struct CreateTableSheet: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
-                        let trimmed = tableName.trimmingCharacters(in: .whitespacesAndNewlines)
                         dismiss()
-                        onCreate(trimmed.isEmpty ? defaultName : trimmed, TournamentConfig.presets[preset].config)
+                        onCreate(finalName, TournamentConfig.presets[preset].config)
                     }
-                    .disabled(busy)
+                    .disabled(busy || tooLong)
                 }
             }
             .onAppear { tableName = defaultName }
