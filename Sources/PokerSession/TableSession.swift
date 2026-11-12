@@ -53,6 +53,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
     /// Hosts `snapshot` (new or resumed) and joins it over loopback with the host token.
     public static func host(_ snapshot: HostSnapshot, saveFile: SaveFile<HostSnapshot> = .host,
                             port: NWEndpoint.Port = .any) async throws -> TableSession {
+        guard let token = snapshot.hostToken else { throw CocoaError(.fileReadCorruptFile) }
         // Saved before anything else, so a crash in the lobby is resumable too.
         let previous = saveFile.load()
         try saveFile.save(snapshot)
@@ -65,7 +66,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         }
         let name = snapshot.game.state.seat(snapshot.game.state.hostID)!.name
         let client = TableClient(endpoint: .hostPort(host: "127.0.0.1", port: bound), code: snapshot.code,
-                                 name: name, token: snapshot.hostToken)
+                                 name: name, token: token)
         let session = TableSession(tableName: snapshot.tableName, code: snapshot.code, name: name, client: client,
                                    tableHost: host, port: bound, saveFile: saveFile, ticketFile: nil)
         await session.start()

@@ -54,6 +54,11 @@ public actor TableClient {
         (events, continuation) = AsyncStream.makeStream()
     }
 
+    deinit {
+        channel?.cancel()
+        continuation.finish()
+    }
+
     public func connect() {
         guard !running, !gaveUp else { return }
         running = true

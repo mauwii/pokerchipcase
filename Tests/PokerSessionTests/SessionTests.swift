@@ -1,3 +1,4 @@
+import Foundation
 import Network
 import Testing
 @testable import PokerCore
@@ -190,5 +191,48 @@ struct SessionTests {
         try old.save(saved)
         await #expect(throws: (any Error).self) { try await TableSession.host(new, saveFile: old, port: blocker.port!) }
         #expect(old.load() == saved)
+    }
+
+    @Test func snapshotWithoutHostTokenThrows() async throws {
+        var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
+        snap.tokens = [:]
+        await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: tempFile()) }
+    }
+
+    @Test func appBecameActiveReconnectsTheHostClient() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let h = anna.tableHost!
+        // Like an iOS suspension: listener and every connection, the loopback client's too, are gone.
+        await h.simulateListenerFailure()
+        await h.disconnectAll()
+        try await eventually { await !h.isListening && anna.connection == .reconnecting }
+        await anna.appBecameActive()
+        try await eventually { anna.connection == .connected }
+        let cem = await guestSession(anna, name: "Cem")
+        defer { Task { await cem.leave() } }
+        // The host's own client receives broadcasts again.
+        try await eventually { anna.state?.seats.count == 2 }
+    }
+
+    @Test func resumeOnNewPortViaBonjour() async throws {
+        let name = "T-\(UUID().uuidString.prefix(8))"
+        let file: SaveFile<HostSnapshot> = tempFile()
+        let anna = try await TableSession.host(
+            .newTable(hostName: "Anna", tableName: name, code: code4711, config: .relaxed), saveFile: file)
+        defer { Task { await anna.leave() } }
+        let ben = await TableSession.join(
+            endpoint: .service(name: name, type: Wire.serviceType, domain: "local.", interface: nil),
+            tableName: name, code: code4711, name: "Ben", ticketFile: tempFile())
+        defer { Task { await ben.leave() } }
+        try await eventually(timeout: .seconds(15)) { ben.me != nil }
+        let p = ben.me
+        // Crash without leave(), then relaunch on a new port like the app does.
+        await anna.tableHost!.stop()
+        await anna.client.disconnect()
+        let resumed = try await TableSession.host(try #require(file.load()), saveFile: file)
+        defer { Task { await resumed.leave() } }
+        #expect(resumed.port != anna.port)
+        try await eventually(timeout: .seconds(10)) { await resumed.tableHost!.connectedPlayers.contains(p!) }
     }
 }
