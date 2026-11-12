@@ -76,7 +76,6 @@ struct StartView: View {
         }
         .confirmationDialog("Discard the saved game?", isPresented: $confirmDiscard, titleVisibility: .visible) {
             Button("Discard and create", role: .destructive) { creating = true }
-            Button("Cancel", role: .cancel) {}
         }
         .alert("Could not open the table", isPresented: $failed) {}
     }
