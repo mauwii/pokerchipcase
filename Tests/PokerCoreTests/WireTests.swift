@@ -20,14 +20,14 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
 }
 
 @Test func helloGoldenJSON() throws {
-    let data = try Wire.encode(ClientMessage.hello(Hello(protocolVersion: 1, name: "Anna", token: nil)), id: id1)
+    let data = try Wire.encode(ClientMessage.hello(Hello(name: "Anna", token: nil)), id: id1)
     #expect(json(data) ==
-        #"{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna","protocolVersion":1},"type":"hello","v":1}"#)
+        #"{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":1}"#)
 }
 
 @Test func clientRoundTrip() throws {
     for message: ClientMessage in [
-        .hello(Hello(protocolVersion: 1, name: "Ben", token: "t")),
+        .hello(Hello(name: "Ben", token: "t")),
         .command(CommandRequest(command: .resolveShowdown(winners: [["A", "B"]]), stateVersion: 3)),
         .command(CommandRequest(command: .undo, stateVersion: 0)),
     ] {

@@ -110,7 +110,7 @@ public actor TableClient {
         guard attempt == generation else { return }
         switch event {
         case .ready:
-            let hello = ClientMessage.hello(Hello(protocolVersion: Wire.version, name: name, token: token))
+            let hello = ClientMessage.hello(Hello(name: name, token: token))
             if let data = try? Wire.encode(hello, id: UUID()) { channel?.send(data) }
         case let .message(data):
             do {

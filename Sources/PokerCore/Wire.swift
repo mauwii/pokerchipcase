@@ -1,13 +1,11 @@
 import Foundation
 
 public struct Hello: Codable, Equatable, Sendable {
-    public var protocolVersion: Int
     public var name: String
     /// Reconnect token from an earlier `welcome`.
     public var token: String?
 
-    public init(protocolVersion: Int, name: String, token: String?) {
-        self.protocolVersion = protocolVersion
+    public init(name: String, token: String?) {
         self.name = name
         self.token = token
     }
