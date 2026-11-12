@@ -120,4 +120,11 @@ struct HostCommandTests {
         try await eventually { await inbox.last?.game.state.phase == .betting }
         await t.host.stop()
     }
+
+    @Test func secondStartStopsTheFirstListener() async throws {
+        let (host, first) = try await startHost()
+        _ = try await host.start()
+        await host.stop()
+        await #expect(throws: (any Error).self) { try await RawClient.connect(first) }
+    }
 }
