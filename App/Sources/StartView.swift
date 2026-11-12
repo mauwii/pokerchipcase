@@ -17,6 +17,13 @@ struct StartView: View {
 
     private var name: String { playerName.trimmingCharacters(in: .whitespacesAndNewlines) }
 
+    /// "<name>'s table", with the name shortened so it fits the 63-byte Bonjour service name.
+    private var defaultTableName: String {
+        var short = name
+        while "\(short)'s table".utf8.count > 63 { short.removeLast() }
+        return "\(short)'s table"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -52,7 +59,7 @@ struct StartView: View {
         .task { await nearby.run() }
         .onAppear(perform: reload)
         .sheet(isPresented: $creating) {
-            CreateTableSheet(defaultName: "\(name)'s table", busy: busy) { tableName, config in
+            CreateTableSheet(defaultName: defaultTableName, busy: busy) { tableName, config in
                 host(.newTable(hostName: name, tableName: tableName, config: config))
             }
         }
@@ -69,6 +76,7 @@ struct StartView: View {
         }
         .confirmationDialog("Discard the saved game?", isPresented: $confirmDiscard, titleVisibility: .visible) {
             Button("Discard and create", role: .destructive) { creating = true }
+            Button("Cancel", role: .cancel) {}
         }
         .alert("Could not open the table", isPresented: $failed) {}
     }
