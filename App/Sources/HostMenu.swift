@@ -15,12 +15,6 @@ struct HostMenu: View {
     let state: GameState
     @Binding var pending: HostConfirm?
 
-    init(session: TableSession, state: GameState, pending: Binding<HostConfirm?>) {
-        self.session = session
-        self.state = state
-        _pending = pending
-    }
-
     private var actor: Seat? {
         guard state.phase == .betting, let i = state.toActIndex, state.seats.indices.contains(i) else { return nil }
         return state.seats[i]

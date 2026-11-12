@@ -25,7 +25,7 @@ struct TableScreen: View {
                     if state.phase == .lobby {
                         LobbyView(session: session, state: state)
                     } else if state.phase == .finished {
-                        RankingView(session: session, state: state, onLeave: onLeave)
+                        RankingView(state: state, onLeave: leave)
                     } else {
                         TableView(session: session, state: state)
                     }
@@ -63,14 +63,17 @@ struct TableScreen: View {
         if case let .failed(f) = session.connection { f.message } else { "" }
     }
 
-    @ViewBuilder private var banner: some View {
-        if session.connection == .reconnecting {
-            Text("Reconnecting…").frame(maxWidth: .infinity).padding(6).background(.bar)
-        } else if session.isSending {
-            Text("Sending…").frame(maxWidth: .infinity).padding(6).background(.bar)
-        } else if let rejection = session.rejection {
-            Text(rejection.message).foregroundStyle(.red).frame(maxWidth: .infinity).padding(6).background(.bar)
+    private var banner: some View {
+        Group {
+            if session.connection == .reconnecting {
+                Text("Reconnecting…")
+            } else if session.isSending {
+                Text("Sending…")
+            } else if let rejection = session.rejection {
+                Text(rejection.message).foregroundStyle(.red)
+            }
         }
+        .frame(maxWidth: .infinity).padding(6).background(.bar)
     }
 
     private func leave() {

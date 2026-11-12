@@ -66,11 +66,6 @@ struct NextHandBar: View {
     let session: TableSession
     let state: GameState
 
-    init(session: TableSession, state: GameState) {
-        self.session = session
-        self.state = state
-    }
-
     var body: some View {
         Group {
             if session.canRunHand {
