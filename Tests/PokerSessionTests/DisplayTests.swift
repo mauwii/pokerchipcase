@@ -73,5 +73,6 @@ import Testing
     var g = try started(stacks: ["B": 20])  // B posts 10, has 10 left
     try g.act(.call)  // A
     #expect(g.state.commitsAllChips(.call, by: "B"))
-    #expect(try !started(stacks: ["B": 40]).state.commitsAllChips(.call, by: "B"))
+    #expect(try !started(stacks: ["B": 30]).state.commitsAllChips(.call, by: "B"))  // posts 10, 20 left
+    #expect(try !started(stacks: ["B": 40]).state.commitsAllChips(.raiseTo(amount: 35), by: "B"))
 }

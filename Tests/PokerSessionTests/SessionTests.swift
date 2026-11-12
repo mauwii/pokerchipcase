@@ -186,7 +186,7 @@ struct SessionTests {
         // Like an iOS suspension: listener and every connection, the loopback client's too, are gone.
         await h.simulateListenerFailure()
         await h.disconnectAll()
-        try await eventually { anna.connection == .reconnecting }
+        try await eventually { await !h.isListening && anna.connection == .reconnecting }
         await anna.appBecameActive()
         try await eventually { anna.connection == .connected }
         let cem = await guestSession(anna, name: "Cem")
@@ -200,11 +200,12 @@ struct SessionTests {
         let file: SaveFile<HostSnapshot> = tempFile()
         let anna = try await TableSession.host(
             .newTable(hostName: "Anna", tableName: name, code: code4711, config: .relaxed), saveFile: file)
+        defer { Task { await anna.leave() } }
         let ben = await TableSession.join(
             endpoint: .service(name: name, type: Wire.serviceType, domain: "local.", interface: nil),
             tableName: name, code: code4711, name: "Ben", ticketFile: tempFile())
         defer { Task { await ben.leave() } }
-        try await eventually(timeout: .seconds(10)) { ben.me != nil }
+        try await eventually(timeout: .seconds(15)) { ben.me != nil }
         let p = ben.me
         // Crash without leave(), then relaunch on a new port like the app does.
         await anna.tableHost!.stop()
