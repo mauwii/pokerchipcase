@@ -1,3 +1,4 @@
+import Foundation
 import Network
 import Testing
 @testable import PokerCore
@@ -176,5 +177,11 @@ struct SessionTests {
         #expect(tickets.load() == nil)
         await anna.leave()
         #expect(file.load() == nil)
+    }
+
+    @Test func snapshotWithoutHostTokenThrows() async throws {
+        var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
+        snap.tokens = [:]
+        await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: tempFile()) }
     }
 }
