@@ -37,7 +37,7 @@ struct ActionBar: View {
                 if legal?.canCheck ?? false {
                     Button("Check") { request(.check) }
                 } else {
-                    Button("Call \(legal?.callAmount ?? 0)") { request(.call) }
+                    Button(legal.map { "Call \($0.callAmount)" } ?? "Call") { request(.call) }
                 }
                 if let lo = legal?.minRaiseTo, let hi = legal?.maxRaiseTo {
                     let x = min(max(raiseTo, lo), hi)
@@ -48,7 +48,10 @@ struct ActionBar: View {
         }
         .disabled(disabled)
         .padding(.bottom)
-        .onChange(of: state.version, initial: true) { raiseTo = legal?.minRaiseTo ?? 0 }
+        .onChange(of: state.version, initial: true) {
+            raiseTo = legal?.minRaiseTo ?? 0
+            pending = nil
+        }
         .confirmationDialog("All-in with \(stack) chips?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
                             titleVisibility: .visible) {
             Button("All-in", role: .destructive) {
