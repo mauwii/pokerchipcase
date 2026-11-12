@@ -7,12 +7,6 @@ struct RankingView: View {
     let state: GameState
     let onLeave: () -> Void
 
-    init(session: TableSession, state: GameState, onLeave: @escaping () -> Void) {
-        self.session = session
-        self.state = state
-        self.onLeave = onLeave
-    }
-
     var body: some View {
         VStack(spacing: 12) {
             Text("Final ranking").font(.title.bold())
@@ -26,12 +20,7 @@ struct RankingView: View {
                 }
             }
             .listStyle(.plain)
-            Button("Leave table") {
-                Task {
-                    await session.leave()
-                    onLeave()
-                }
-            }
+            Button("Leave table", action: onLeave)
             .buttonStyle(.borderedProminent)
             .padding(.bottom)
         }

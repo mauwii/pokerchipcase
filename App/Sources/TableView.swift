@@ -6,11 +6,6 @@ struct TableView: View {
     let session: TableSession
     let state: GameState
 
-    init(session: TableSession, state: GameState) {
-        self.session = session
-        self.state = state
-    }
-
     private var myStack: Chips { session.me.flatMap { state.seat($0)?.stack } ?? 0 }
     private var nextLevel: BlindLevel? {
         state.config.levels.indices.contains(state.clock.levelIndex + 1) ? state.config.levels[state.clock.levelIndex + 1] : nil
