@@ -53,6 +53,7 @@ struct LobbyView: View {
                         Text("Random").tag(PlayerID?.none)
                         ForEach(state.seats, id: \.id) { Text($0.name).tag(PlayerID?.some($0.id)) }
                     }
+                    .onChange(of: choice) { if $1 == nil { dealer = nil } }
                     Button("Start tournament") {
                         guard let button = choice ?? state.seats.randomElement()?.id else { return }
                         Task { await session.send(.startTournament(button: button)) }

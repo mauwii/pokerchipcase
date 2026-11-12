@@ -26,6 +26,12 @@ struct HostMenu: View {
         return state.seats[i]
     }
 
+    /// `removeFromGame` accepts only these phases.
+    private var removable: [Seat] {
+        guard state.phase == .betting || state.phase == .handComplete else { return [] }
+        return state.seats.filter { $0.id != state.hostID && !$0.isEliminated }
+    }
+
     var body: some View {
         if state.phase != .finished {
             if state.clock.isPaused {
@@ -41,9 +47,11 @@ struct HostMenu: View {
                 Button("Fold for \(seat.name)") { send(.act(player: seat.id, action: .fold)) }
             }
         }
-        Menu("Remove player", systemImage: "person.badge.minus") {
-            ForEach(state.seats.filter { $0.id != state.hostID && !$0.isEliminated }, id: \.id) { seat in
-                Button(seat.name) { pending = .remove(seat.id, seat.name) }
+        if !removable.isEmpty {
+            Menu("Remove player", systemImage: "person.badge.minus") {
+                ForEach(removable, id: \.id) { seat in
+                    Button(seat.name) { pending = .remove(seat.id, seat.name) }
+                }
             }
         }
         Button("Undo last change", systemImage: "arrow.uturn.backward") { pending = .undo }
@@ -67,11 +75,10 @@ extension View {
             titleVisibility: .visible
         ) {
             switch item {
-            case let .remove(id, _): Button("Remove", role: .destructive) { run(.removePlayer(player: id)) }
-            case .undo: Button("Undo", role: .destructive) { run(.undo) }
+            case let .remove(id, _): Button("Remove", role: .destructive) { Task { await session.send(.removePlayer(player: id)) } }
+            case .undo: Button("Undo", role: .destructive) { Task { await session.send(.undo) } }
             case nil: EmptyView()
             }
         }
-        func run(_ command: Command) { Task { await session.send(command) } }
     }
 }

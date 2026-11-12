@@ -30,7 +30,7 @@ struct StartView: View {
                 Section("Your name") { TextField("Name", text: $playerName) }
                 Section {
                     if let savedGame {
-                        Button { resume(savedGame) } label: {
+                        Button { host(savedGame) } label: {
                             VStack(alignment: .leading) {
                                 Text("Resume game")
                                 Text(savedGame.tableName).font(.caption).foregroundStyle(.secondary)
@@ -84,8 +84,6 @@ struct StartView: View {
         savedGame = SaveFile.host.load().flatMap { $0.isResumable ? $0 : nil }
         ticket = SaveFile.seat.load()
     }
-
-    private func resume(_ snapshot: HostSnapshot) { host(snapshot) }
 
     private func host(_ snapshot: HostSnapshot) {
         connect {
