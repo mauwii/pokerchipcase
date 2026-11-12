@@ -145,7 +145,6 @@ public actor TableHost {
         guard bound[id] == nil else {
             return send(.error(WireErrorCode.malformed.rawValue), to: id, envelopeID: requestID)
         }
-        guard hello.protocolVersion == Wire.version else { return reject(.versionMismatch, id, replyTo: requestID) }
         let player: PlayerID
         let token: String
         if let t = hello.token, let p = snapshot.tokens[t] {

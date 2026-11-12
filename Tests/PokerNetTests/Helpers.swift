@@ -80,8 +80,8 @@ extension ServerMessage {
     var error: String? { if case let .error(e) = self { e } else { nil } }
 }
 
-func hello(_ name: String, token: String? = nil, version: Int = Wire.version) -> ClientMessage {
-    .hello(Hello(protocolVersion: version, name: name, token: token))
+func hello(_ name: String, token: String? = nil) -> ClientMessage {
+    .hello(Hello(name: name, token: token))
 }
 
 /// Raw protocol client without TableClient logic.

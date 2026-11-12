@@ -47,7 +47,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 ### `hello` – join or reconnect
 
 ```json
-{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna","protocolVersion":1},"type":"hello","v":1}
+{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":1}
 ```
 
 Send `hello` exactly once per connection, as the first message. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host closes the older connection without sending it a message. A second `hello` on the same connection is answered with `malformed`.
@@ -135,7 +135,7 @@ Clients only display what the last `state` says and never change it themselves.
 
 | Code | Meaning | Connection |
 |---|---|---|
-| `versionMismatch` | `hello.protocolVersion` or `v` does not match | closed |
+| `versionMismatch` | `v` does not match | closed |
 | `tableFull` | already 10 players | closed |
 | `gameInProgress` | tournament running, new players can no longer join (reconnecting with a token still works) | closed |
 | `helloRequired` | `command` before `hello` | stays open |
@@ -159,7 +159,7 @@ On success the host sends the new `state` before the `ack`, so a client that wai
 
 ## Versions
 
-If the format changes incompatibly, `v` increases. A host answers a `hello` with a different `protocolVersion` with an `error`. A receiver treats any message with a different `v` as `versionMismatch` and stops retrying.
+If the format changes incompatibly, `v` increases. A receiver treats any message with a different `v` as `versionMismatch` and stops retrying.
 
 ## Recommendations for clients
 
