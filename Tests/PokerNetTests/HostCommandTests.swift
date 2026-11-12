@@ -120,4 +120,15 @@ struct HostCommandTests {
         try await eventually { await inbox.last?.game.state.phase == .betting }
         await t.host.stop()
     }
+
+    @Test func secondStartStopsTheFirstListener() async throws {
+        let (host, first) = try await startHost()
+        _ = try await host.start()
+        // Host still running, so only a closed first listener (not the accept guard) can end this stream.
+        let channel = MessageChannel(to: loopback(first), code: code4711)
+        let rec = EventRecorder(channel.events)
+        channel.start()
+        #expect(try await rec.waitForEnd() != nil)
+        await host.stop()
+    }
 }

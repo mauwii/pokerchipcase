@@ -29,8 +29,8 @@ public struct HostSnapshot: Codable, Equatable, Sendable {
         )
     }
 
-    /// Token the host device's own client uses to connect as the host.
-    public var hostToken: String {
-        tokens.first { $0.value == game.state.hostID }!.key
+    /// Token the host device's own client uses to connect as the host; nil if the save lost it.
+    public var hostToken: String? {
+        tokens.first { $0.value == game.state.hostID }?.key
     }
 }

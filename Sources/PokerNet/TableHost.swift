@@ -28,6 +28,7 @@ public actor TableHost {
 
     /// Starts listening and returns the bound port.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
+        listener?.cancel()
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
         listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
         listener.newConnectionHandler = { [weak self] connection in
@@ -75,6 +76,7 @@ public actor TableHost {
     }
 
     private func accept(_ connection: NWConnection) {
+        guard listener != nil else { return connection.cancel() }
         let id = UUID()
         let channel = MessageChannel(connection: connection)
         channels[id] = channel
@@ -95,6 +97,7 @@ public actor TableHost {
     }
 
     private func receive(_ data: Data, from id: UUID) {
+        guard channels[id] != nil else { return }
         // Errors reuse the request's envelope id so the sender can match them to its command.
         let messageID: UUID
         let message: ClientMessage
@@ -123,10 +126,10 @@ public actor TableHost {
             return send(.ack(Ack(id: messageID, result: .rejected(reason: error))), to: id)
         }
         forgetRemovedPlayers()
+        onChange(snapshot)
         // State before ack: when a client's send returns, it already knows the new state version.
         broadcastState()
         send(.ack(Ack(id: messageID, result: .ok)), to: id)
-        onChange(snapshot)
     }
 
     /// Players without a seat (removed in the lobby, or their join was undone) lose their token and connection.
@@ -139,6 +142,9 @@ public actor TableHost {
     }
 
     private func welcome(_ hello: Hello, from id: UUID, requestID: UUID?) {
+        guard bound[id] == nil else {
+            return send(.error(WireErrorCode.malformed.rawValue), to: id, envelopeID: requestID)
+        }
         guard hello.protocolVersion == Wire.version else { return reject(.versionMismatch, id, replyTo: requestID) }
         let player: PlayerID
         let token: String
