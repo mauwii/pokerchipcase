@@ -124,7 +124,11 @@ struct HostCommandTests {
     @Test func secondStartStopsTheFirstListener() async throws {
         let (host, first) = try await startHost()
         _ = try await host.start()
+        // Host still running, so only a closed first listener (not the accept guard) can end this stream.
+        let channel = MessageChannel(to: loopback(first), code: code4711)
+        let rec = EventRecorder(channel.events)
+        channel.start()
+        #expect(try await rec.waitForEnd() != nil)
         await host.stop()
-        await #expect(throws: (any Error).self) { try await RawClient.connect(first) }
     }
 }

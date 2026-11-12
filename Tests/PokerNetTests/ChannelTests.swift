@@ -63,6 +63,7 @@ struct ChannelTests {
         let (listener, port, channels) = try await startRecordingListener()
         defer { listener.cancel() }
         let sender = MessageChannel(to: loopback(port), code: code4711)
+        defer { sender.cancel() }
         let rec = EventRecorder(sender.events)
         sender.start()
         _ = try await rec.first { $0 == .ready }
@@ -71,7 +72,6 @@ struct ChannelTests {
         var it = channels.makeAsyncIterator()
         let receiver = try #require(await it.next())
         #expect(try await receiver.waitForEnd() as? ChannelError == .messageTooLarge)
-        sender.cancel()
     }
 
     @Test func messageAtTheLimitArrives() async throws {

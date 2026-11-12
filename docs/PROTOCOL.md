@@ -139,7 +139,7 @@ Clients only display what the last `state` says and never change it themselves.
 | `tableFull` | already 10 players | closed |
 | `gameInProgress` | tournament running, new players can no longer join (reconnecting with a token still works) | closed |
 | `helloRequired` | `command` before `hello` | stays open |
-| `malformed` | message could not be read | stays open |
+| `malformed` | message could not be read, or a second `hello` | stays open |
 | `removed` | the player was removed from the table (or their join was undone); the token is no longer valid | closed |
 
 ## Flow
