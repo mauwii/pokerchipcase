@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -11,9 +12,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift test
   app:
+    name: App build
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: .build/app
+          key: app-${{ runner.os }}-${{ hashFiles('App/**', 'Sources/**', 'Package.swift') }}
+          restore-keys: app-${{ runner.os }}-
       - run: brew install xcodegen
       - run: |
           xcodegen generate --spec App/project.yml
