@@ -25,7 +25,7 @@ struct TableScreen: View {
                     if state.phase == .lobby {
                         LobbyView(session: session, state: state)
                     } else if state.phase == .finished {
-                        RankingView(session: session, state: state, onLeave: leave)
+                        RankingView(state: state, onLeave: leave)
                     } else {
                         TableView(session: session, state: state)
                     }

@@ -3,7 +3,6 @@ import PokerSession
 import SwiftUI
 
 struct RankingView: View {
-    let session: TableSession
     let state: GameState
     let onLeave: () -> Void
 
