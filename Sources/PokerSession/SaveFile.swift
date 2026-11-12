@@ -41,13 +41,6 @@ public struct SeatTicket: Codable, Equatable, Sendable {
     public var name: String
     public var token: String
 
-    public init(tableName: String, code: TableCode, name: String, token: String) {
-        self.tableName = tableName
-        self.code = code
-        self.name = name
-        self.token = token
-    }
-
     /// The table's Bonjour service, resolved anew on every connect.
     public var endpoint: NWEndpoint {
         .service(name: tableName, type: Wire.serviceType, domain: "local.", interface: nil)

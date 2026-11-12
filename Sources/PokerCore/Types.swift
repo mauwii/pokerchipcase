@@ -80,11 +80,6 @@ public enum Street: String, Codable, Equatable, Sendable {
 public struct Pot: Codable, Equatable, Sendable {
     public var amount: Chips
     public var eligible: [PlayerID]
-
-    public init(amount: Chips, eligible: [PlayerID]) {
-        self.amount = amount
-        self.eligible = eligible
-    }
 }
 
 public struct BlindClock: Codable, Equatable, Sendable {

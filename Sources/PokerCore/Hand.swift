@@ -258,11 +258,4 @@ public struct LegalActions: Equatable, Sendable {
     /// nil = raising not allowed.
     public var minRaiseTo: Chips?
     public var maxRaiseTo: Chips?
-
-    public init(canCheck: Bool, callAmount: Chips, minRaiseTo: Chips?, maxRaiseTo: Chips?) {
-        self.canCheck = canCheck
-        self.callAmount = callAmount
-        self.minRaiseTo = minRaiseTo
-        self.maxRaiseTo = maxRaiseTo
-    }
 }

@@ -10,13 +10,6 @@ public struct HostSnapshot: Codable, Equatable, Sendable {
     public var tableName: String
     public var code: TableCode
 
-    public init(game: Game, tokens: [String: PlayerID], tableName: String, code: TableCode) {
-        self.game = game
-        self.tokens = tokens
-        self.tableName = tableName
-        self.code = code
-    }
-
     public static func newTable(
         hostName: String, tableName: String, code: TableCode = .random(), config: TournamentConfig
     ) -> HostSnapshot {

@@ -6,10 +6,6 @@ public struct QuickPick: Equatable, Sendable {
     public enum Kind: Equatable, Sendable { case halfPot, pot, allIn }
     public var kind: Kind
     public var raiseTo: Chips
-    public init(kind: Kind, raiseTo: Chips) {
-        self.kind = kind
-        self.raiseTo = raiseTo
-    }
 }
 
 extension GameState {
