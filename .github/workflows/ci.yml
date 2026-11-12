@@ -10,3 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift test
+  app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: |
+          xcodegen generate --spec App/project.yml
+          xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet

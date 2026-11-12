@@ -36,17 +36,19 @@ An iOS app that replaces the poker chip case at a Texas Hold'em night among frie
 
 ```text
 pokerchipcase/
-  Package.swift              Swift package with two targets
+  Package.swift              Swift package with three targets
   Sources/PokerCore/         game logic + protocol types (no UI, no networking)
   Sources/PokerNet/          host/client over Network.framework
+  Sources/PokerSession/      display values, save files, TableSession (observable session for the app)
   Tests/PokerCoreTests/
   Tests/PokerNetTests/
+  Tests/PokerSessionTests/
   App/                       Xcode project, SwiftUI, depends on the package
   docs/PROTOCOL.md
   .github/workflows/ci.yml
 ```
 
-Both package targets also run on macOS – logic and networking are testable without an iPhone.
+All package targets also run on macOS – logic and networking are testable without an iPhone.
 
 ### PokerCore
 
@@ -102,7 +104,7 @@ The state contains no secrets (all stacks are public), so every client gets the 
 ### App (SwiftUI)
 
 - **Start:** create table / join table (list from Bonjour, then enter the code), enter name
-- **Lobby (host):** tournament settings with presets, show the table code, drag & drop players into seat order, button random or manual, start
+- **Lobby (host):** tournament settings with presets when creating the table, show the table code, drag & drop players into seat order, button random or manual, start
 - **Table view (everyone):** always visible – own stack large, pot, amount to call, all players with stack and bet of the round, active player highlighted, current blind level and remaining time. Action buttons (fold, check/call, bet/raise with slider and quick picks ½ pot / pot / all-in) only enabled on your turn, greyed out otherwise. All-in needs confirmation. Vibration when it is your turn
 - **Dealer hints:** "You deal", "Deal the flop", "Deal the turn", "Deal the river"
 - **Showdown (dealer of the hand):** pots listed, tap the winner(s) per pot (multiple = split)
@@ -126,6 +128,7 @@ The state contains no secrets (all stacks are public), so every client gets the 
 
 - **PokerCore (focus):** unit tests for side pots, min raise and incomplete all-ins, heads-up rule, odd chip on splits, elimination, tournament end, blind level changes, undo. Scenario tests that play complete hands as command sequences.
 - **PokerNet:** integration tests on macOS – host plus several clients over `localhost`: join, wrong code, version mismatch, reconnect with token.
+- **PokerSession:** unit tests for display values and save files, loopback tests for host/guest sessions, resume and rejoin.
 - **App:** manually in the simulator (several simulators at one table) and on real devices.
 - **CI:** GitHub Actions on a macOS runner: `swift test` for the package, `xcodebuild build` for the app.
 
