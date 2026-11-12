@@ -37,7 +37,7 @@ struct TableScreen: View {
             .navigationTitle(session.tableName)
             .safeAreaInset(edge: .top) { banner }
             // Here, not in ActionBar: that is re-inserted every hand with the trigger already true.
-            .sensoryFeedback(.impact(weight: .heavy), trigger: session.legalActions != nil) { !$0 && $1 }
+            .sensoryFeedback(.impact(weight: .heavy), trigger: session.legalActions != nil ? session.state?.street : nil) { $1 != nil }
             .toolbar {
                 Menu("Table", systemImage: "ellipsis.circle") {
                     if session.isHost, let state = session.state, state.phase != .lobby {

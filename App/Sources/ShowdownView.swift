@@ -33,7 +33,7 @@ struct ShowdownView: View {
                     .disabled(session.isSending || selection.contains { $0.isEmpty })
             }
             .padding(.bottom)
-            .onChange(of: state.version, initial: true) { winners = Array(repeating: [], count: state.pots.count) }
+            .onChange(of: state.pots, initial: true) { winners = Array(repeating: [], count: state.pots.count) }
         } else {
             Text("Waiting for \(dealerName(state)) to pick the winners").foregroundStyle(.secondary).padding(.bottom)
         }
