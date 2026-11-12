@@ -38,7 +38,7 @@ struct TableScreen: View {
             .safeAreaInset(edge: .top) { banner }
             // Here, not in ActionBar: that is re-inserted every hand with the trigger already set.
             // nil while waiting, the street on my turn, so a new street during my turn fires too.
-            .sensoryFeedback(.impact(weight: .heavy), trigger: session.legalActions != nil ? session.state?.street : nil) { $1 != nil }
+            .sensoryFeedback(.warning, trigger: session.legalActions != nil ? session.state?.street : nil) { $1 != nil }
             .toolbar {
                 Menu("Table", systemImage: "ellipsis.circle") {
                     if session.isHost, let state = session.state, state.phase != .lobby {
