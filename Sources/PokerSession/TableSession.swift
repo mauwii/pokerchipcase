@@ -54,9 +54,15 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
     public static func host(_ snapshot: HostSnapshot, saveFile: SaveFile<HostSnapshot> = .host,
                             port: NWEndpoint.Port = .any) async throws -> TableSession {
         // Saved before anything else, so a crash in the lobby is resumable too.
+        let previous = saveFile.load()
         try saveFile.save(snapshot)
         let host = TableHost(snapshot: snapshot, onChange: { try? saveFile.save($0) })
-        let bound = try await host.start(port: port)
+        let bound: NWEndpoint.Port
+        do { bound = try await host.start(port: port) } catch {
+            // The table never opened: put the old save back (or remove the new one).
+            if let previous { try? saveFile.save(previous) } else { saveFile.delete() }
+            throw error
+        }
         let name = snapshot.game.state.seat(snapshot.game.state.hostID)!.name
         let client = TableClient(endpoint: .hostPort(host: "127.0.0.1", port: bound), code: snapshot.code,
                                  name: name, token: snapshot.hostToken)
