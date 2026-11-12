@@ -35,6 +35,7 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
     private let ticketFile: SaveFile<SeatTicket>?
     /// Started from the stored ticket's token, so a failure may delete that ticket.
     private let fromTicket: Bool
+    private var eventTask: Task<Void, Never>?
 
     private init(tableName: String, code: TableCode, name: String, client: TableClient, tableHost: TableHost?,
                  port: NWEndpoint.Port?, saveFile: SaveFile<HostSnapshot>?, ticketFile: SaveFile<SeatTicket>?,
@@ -105,12 +106,10 @@ public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, 
         ticketFile?.delete()
     }
 
-    private var eventTask: Task<Void, Never>?
-
     private func start() async {
         eventTask = Task { [weak self, events = client.events] in
             for await event in events {
-                guard let self else { return }
+                guard let self, !Task.isCancelled else { return }
                 self.handle(event)
             }
         }
