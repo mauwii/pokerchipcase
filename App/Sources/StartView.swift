@@ -11,6 +11,7 @@ struct StartView: View {
     @State private var ticket: SeatTicket?
     @State private var creating = false
     @State private var joining: DiscoveredTable?
+    @State private var confirmDiscard = false
     @State private var failed = false
     @State private var busy = false
 
@@ -34,7 +35,7 @@ struct StartView: View {
                         Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }
                         Button("Discard", role: .destructive) { SaveFile.seat.delete(); reload() }
                     }
-                    Button("Create table") { creating = true }
+                    Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
                 .disabled(name.isEmpty || busy)
                 if busy { ProgressView().frame(maxWidth: .infinity) }
@@ -65,6 +66,9 @@ struct StartView: View {
                                             token: token)
                 }
             }
+        }
+        .confirmationDialog("Discard the saved game?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button("Discard and create", role: .destructive) { creating = true }
         }
         .alert("Could not open the table", isPresented: $failed) {}
     }
