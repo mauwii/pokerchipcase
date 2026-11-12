@@ -77,7 +77,7 @@ struct HostLobbyTests {
     @Test func versionMismatchSendsErrorAndCloses() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)
-        ben.send(hello("Ben", version: 2))
+        ben.sendRaw(Data(#"{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Ben"},"type":"hello","v":2}"#.utf8))
         #expect(try await ben.error() == WireErrorCode.versionMismatch.rawValue)
         try await ben.waitForClose()
         await host.stop()
@@ -86,7 +86,7 @@ struct HostLobbyTests {
     @Test func messagesAfterRejectionAreIgnored() async throws {
         let (host, port) = try await startHost()
         let ben = try await RawClient.connect(port)
-        ben.send(hello("Ben", version: 2))
+        ben.sendRaw(Data(#"{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Ben"},"type":"hello","v":2}"#.utf8))
         ben.send(hello("Cem"))
         try await ben.waitForClose()
         try await Task.sleep(for: .milliseconds(200))
