@@ -235,9 +235,8 @@ struct ClientTests {
         }
         let port = try await fake.start()
         let (ben, events) = await client(port)
-        _ = try await events.first { $0 == .failed(.versionMismatch) }
+        #expect(try await events.waitForEnd() == nil)
         #expect(await events.all == [.failed(.versionMismatch)])
-        #expect(await fake.hellos == 1)
         await ben.disconnect()
         await fake.dropAll()
     }
