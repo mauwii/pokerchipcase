@@ -24,12 +24,15 @@ Launch the app with the argument `-debugTable` to get a table full of bots on a 
 
 ## Checks
 
-Run both from the repo root before you open a pull request. CI runs the same two.
+Run these from the repo root before you open a pull request. CI runs the same three.
 
 ```sh
+pre-commit run --all-files
 swift test
 xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
 ```
+
+Install the hooks once with `brew install pre-commit && pre-commit install` to run them on every commit. That is optional; CI runs them anyway.
 
 The libraries in `Sources/` have unit tests in `Tests/`. Add or update tests for changes there. The SwiftUI app in `App/Sources` has no unit tests; describe what you checked by hand in the simulator.
 

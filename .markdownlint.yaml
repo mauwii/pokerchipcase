@@ -1,0 +1,4 @@
+# The docs are not wrapped.
+MD013: false
+# The tables use compact |---| separator rows.
+MD060: false
