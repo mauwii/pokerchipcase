@@ -67,19 +67,19 @@ struct TableScreen: View {
         if case let .failed(f) = session.connection { f.message } else { "" }
     }
 
-    private var banner: some View {
-        Group {
-            if session.connection == .reconnecting {
-                Text("Reconnecting…")
-            } else if session.isSending {
-                Text("Sending…")
-            } else if let rejection = session.rejection {
-                Text(rejection.message).foregroundStyle(.red)
-            } else if let problem = session.problem {
-                Text(problem.text).foregroundStyle(.red)
-            }
+    /// Nothing at all when there is no message, so no empty bar shows above the table.
+    @ViewBuilder private var banner: some View {
+        if let text = bannerText {
+            text.frame(maxWidth: .infinity).padding(6).background(.bar)
         }
-        .frame(maxWidth: .infinity).padding(6).background(.bar)
+    }
+
+    private var bannerText: Text? {
+        if session.connection == .reconnecting { return Text("Reconnecting…") }
+        if session.isSending { return Text("Sending…") }
+        if let rejection = session.rejection { return Text(rejection.message).foregroundStyle(.red) }
+        if let problem = session.problem { return Text(problem.text).foregroundStyle(.red) }
+        return nil
     }
 
     private func leave() {
