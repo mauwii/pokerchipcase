@@ -37,6 +37,12 @@ func tempFile<V>(_ name: String = "save.json") -> SaveFile<V> {
     SaveFile(url: FileManager.default.temporaryDirectory.appending(path: UUID().uuidString).appending(path: name))
 }
 
+/// Makes the file's directory read-only (saving and deleting in it fail) or writable again.
+func setReadOnly<V>(_ file: SaveFile<V>, _ readOnly: Bool) throws {
+    try FileManager.default.setAttributes([.posixPermissions: readOnly ? 0o555 : 0o755],
+                                          ofItemAtPath: file.url.deletingLastPathComponent().path)
+}
+
 struct TimeoutError: Error { var location: SourceLocation }
 
 /// Waits until `condition` is true (at most `timeout`).

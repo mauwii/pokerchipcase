@@ -23,9 +23,18 @@ import Testing
 @Test func deleteRemovesTheFile() throws {
     let file: SaveFile<SeatTicket> = tempFile()
     try file.save(SeatTicket(tableName: "K", code: code4711, name: "Ben", token: "t"))
-    file.delete()
+    try file.delete()
     #expect(file.load() == nil)
-    file.delete()
+    try file.delete()  // missing is no error
+}
+
+@Test func deleteThatCannotRemoveTheFileThrows() throws {
+    let file: SaveFile<SeatTicket> = tempFile()
+    try file.save(SeatTicket(tableName: "K", code: code4711, name: "Ben", token: "t"))
+    try setReadOnly(file, true)
+    defer { try? setReadOnly(file, false) }
+    #expect(throws: CocoaError.self) { try file.delete() }
+    #expect(file.load() != nil)
 }
 
 @Test func hostSnapshotRoundTripsExactly() throws {

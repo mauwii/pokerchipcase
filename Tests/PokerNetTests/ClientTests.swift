@@ -222,6 +222,18 @@ struct ClientTests {
         await anna.disconnect(); await ben.disconnect(); await host.stop()
     }
 
+    @Test func hostEndingTheTableFailsWithoutRetry() async throws {
+        let (host, port) = try await startHost()
+        let (ben, events) = await client(port)
+        _ = try await events.first { $0.welcome != nil }
+        await host.end()
+        _ = try await events.first { $0 == .failed(.tableClosed) }
+        #expect(try await events.waitForEnd() == nil)
+        #expect(!(await events.all.contains(.connectionLost)))
+        #expect(await !host.isListening)
+        await ben.disconnect()
+    }
+
     @Test func eventsFinishAfterFailure() async throws {
         let (host, port) = try await startHost()
         let (ben, events) = await client(port, code: TableCode("0815")!)

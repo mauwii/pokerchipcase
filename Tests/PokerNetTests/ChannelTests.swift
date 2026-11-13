@@ -52,6 +52,32 @@ struct ChannelTests {
         #expect(try await rec.waitForEnd() as? ChannelError == .handshakeFailed)
     }
 
+    /// A peer that resets the connection before the handshake completed: on a real network this is
+    /// how a wrong code can end, instead of a TLS alert (#50).
+    @Test func resetBeforeReadyFailsHandshake() async throws {
+        let listener = try NWListener(using: .tcp, on: .any)
+        defer { listener.cancel() }
+        listener.newConnectionHandler = { connection in
+            connection.stateUpdateHandler = { if case .ready = $0 { connection.forceCancel() } }
+            connection.start(queue: .global())
+        }
+        let port = try await listener.startAndWaitUntilReady(queue: .global())
+        let channel = MessageChannel(to: loopback(port), code: code4711)
+        let rec = EventRecorder(channel.events)
+        channel.start()
+        #expect(try await rec.waitForEnd() as? ChannelError == .handshakeFailed)
+    }
+
+    /// Port 1 on loopback: nothing listens, so the connection is refused. A just-cancelled listener is not
+    /// used here, because under load it can still accept and then drop the connection.
+    @Test func refusedConnectionIsNotAHandshakeFailure() async throws {
+        let channel = MessageChannel(to: loopback(1), code: code4711)
+        let rec = EventRecorder(channel.events)
+        channel.start()
+        let end = try await rec.waitForEnd()
+        #expect(end != nil && end as? ChannelError != .handshakeFailed)
+    }
+
     @Test func unreachableHostEndsStream() async throws {
         let channel = MessageChannel(to: loopback(1), code: TableCode("4711")!)
         let rec = EventRecorder(channel.events)

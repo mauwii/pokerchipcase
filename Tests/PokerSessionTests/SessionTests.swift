@@ -181,6 +181,40 @@ struct SessionTests {
         #expect(file.load() == nil)
     }
 
+    @Test func guestIsToldWhenTheHostEndsTheTable() async throws {
+        let anna = try await hostSession()
+        let tickets: SaveFile<SeatTicket> = tempFile()
+        let ben = await guestSession(anna, ticketFile: tickets)
+        defer { Task { await ben.leave() } }
+        try await eventually { ben.connection == .connected && tickets.load() != nil }
+        await anna.leave()
+        try await eventually { ben.connection == .failed(.tableClosed) }
+        #expect(tickets.load() == nil)
+    }
+
+    @Test func failedSaveAndDeleteAreShownUntilTheyWorkAgain() async throws {
+        let file: SaveFile<HostSnapshot> = tempFile()
+        let anna = try await hostSession(file)
+        try setReadOnly(file, true)
+        let ben = await guestSession(anna)
+        defer { Task { await ben.leave() } }
+        try await eventually { anna.problem?.action == .save }
+        #expect(await anna.leave() == false)
+        #expect(anna.problem?.action == .delete)
+        #expect(file.load() != nil)
+        try setReadOnly(file, false)
+        #expect(await anna.leave() == true)
+        #expect(anna.problem == nil && file.load() == nil)
+    }
+
+    @Test func failedSendIsShown() async throws {
+        let ben = await TableSession.join(endpoint: .hostPort(host: "127.0.0.1", port: 1), tableName: "Test",
+                                          code: code4711, name: "Ben", ticketFile: tempFile())
+        defer { Task { await ben.leave() } }
+        await ben.send(.startNextHand)
+        #expect(ben.problem?.action == .send && !ben.isSending)
+    }
+
     @Test func failedStartRestoresThePreviousSave() async throws {
         let blocker = try await hostSession()  // occupies its port
         defer { Task { await blocker.leave() } }
@@ -198,6 +232,12 @@ struct SessionTests {
     @Test func snapshotWithoutHostTokenThrows() async throws {
         var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
         snap.tokens = [:]
+        await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: tempFile()) }
+    }
+
+    @Test func snapshotWithoutHostSeatThrows() async throws {
+        var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
+        snap.game.state.seats = []
         await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: tempFile()) }
     }
 

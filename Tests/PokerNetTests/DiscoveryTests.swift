@@ -43,6 +43,20 @@ struct DiscoveryTests {
         await host.stop()
     }
 
+    /// Over a Bonjour endpoint Network.framework retries a failed TLS handshake forever unless the channel
+    /// resolves the service first (#50).
+    @Test func wrongCodeViaBonjourFailsWithoutRetry() async throws {
+        let (host, name) = try await advertisedHost()
+        let ben = TableClient(endpoint: .service(name: name, type: Wire.serviceType, domain: "local.", interface: nil),
+                              code: TableCode("0815")!, name: "Ben", retryDelay: .milliseconds(100))
+        let events = EventRecorder(ben.events)
+        await ben.connect()
+        _ = try await events.first(timeout: discoveryTimeout) { $0 == .failed(.wrongCode) }
+        #expect(await events.all == [.failed(.wrongCode)])
+        await ben.disconnect()
+        await host.stop()
+    }
+
     @Test func browserReportsDeniedLocalNetwork() {
         let denied = NWBrowser.State.waiting(.dns(DNSServiceErrorType(kDNSServiceErr_PolicyDenied)))
         #expect(TableBrowser.status(for: denied) == .localNetworkDenied)

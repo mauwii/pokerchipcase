@@ -10,6 +10,18 @@ extension ClientFailure {
         case .tableFull: "The table is full"
         case .gameInProgress: "The tournament has already started"
         case .removed: "You were removed from the table"
+        case .tableClosed: "The host ended the table"
+        }
+    }
+}
+
+extension SessionProblem {
+    var text: String {
+        switch action {
+        case .save: "Couldn't save the game: \(message)"
+        case .delete: "Couldn't delete the saved game: \(message)"
+        case .send: "Not sent – please try again"
+        case .listen: "Guests can't reach the table: \(message)"
         }
     }
 }
