@@ -30,11 +30,13 @@
 ### Task 1: License name and issue forms
 
 **Files:**
+
 - Modify: `LICENSE:3`
 - Create: `.github/ISSUE_TEMPLATE/bug_report.yml`
 - Create: `.github/ISSUE_TEMPLATE/feature_request.yml`
 
 **Interfaces:**
+
 - Produces: nothing later tasks use.
 
 - [ ] **Step 1: LICENSE line 3 becomes exactly** `Copyright (c) 2026 mauwii (Matthias Wild)`.
@@ -71,10 +73,12 @@ git commit -m "chore: add issue forms, add real name to the license"
 ### Task 2: EditorConfig, pre-commit config and CI job
 
 **Files:**
+
 - Create: `.editorconfig`, `.pre-commit-config.yaml`, `.markdownlint.yaml`
 - Modify: `.github/dependabot.yml`, `.github/workflows/ci.yml`, `AGENTS.md` (Commands), `CONTRIBUTING.md` (Checks)
 
 **Interfaces:**
+
 - Produces: the hook set Task 3 runs; the CI job id `lint`.
 
 - [ ] **Step 1: `.editorconfig`**
@@ -184,9 +188,11 @@ git commit -m "ci: add pre-commit hooks, editorconfig and a lint job"
 ### Task 3: Fix what the hooks report
 
 **Files:**
+
 - Modify: whatever `pre-commit run --all-files` reports. Possibly create `_typos.toml`.
 
 **Interfaces:**
+
 - Consumes: the hook set from Task 2.
 
 - [ ] **Step 1: Run all hooks**

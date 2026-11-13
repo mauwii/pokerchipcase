@@ -1,7 +1,7 @@
 # PokerCore Implementation Plan (plan 1 of 3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
+>
 > **Status:** executed in PR #1. The final review added fixes beyond this plan: chip conservation (lone matched player is not asked to act, dead chips go to the top pot), `GameState.version` / `stateVersion` against stale double taps, and the host as a fallback for `resolveShowdown`.
 
 **Goal:** Swift package `PokerChipCase` with the target `PokerCore`: complete, tested tournament logic for No-Limit Texas Hold'em plus the wire protocol types, built in CI.
@@ -62,11 +62,14 @@ docs/PROTOCOL.md
 ### Task 1: Package scaffold, types, lobby, CI
 
 **Files:**
+
 - Create: `Package.swift`, `LICENSE`, `.gitignore`, `.github/workflows/ci.yml`, `Sources/PokerCore/Types.swift`, `Sources/PokerCore/Command.swift`, `Sources/PokerCore/Game.swift`
 - Test: `Tests/PokerCoreTests/LobbyTests.swift`
 
 **Interfaces:**
+
 - Produces:
+
   ```swift
   public typealias Chips = Int
   public typealias PlayerID = String
@@ -122,6 +125,7 @@ docs/PROTOCOL.md
       public mutating func apply(_ command: Command, by actor: PlayerID, at now: Date) throws(Rejection)
   }
   ```
+
   All types: `Codable, Equatable, Sendable`.
 
 - [ ] **Step 1: Create the package**
@@ -178,11 +182,13 @@ git commit -m "feat(core): package scaffold, types, lobby commands, CI"
 ### Task 2: Tournament start and hand start
 
 **Files:**
+
 - Create: `Sources/PokerCore/Hand.swift`, `Tests/PokerCoreTests/Helpers.swift`
 - Modify: `Sources/PokerCore/Game.swift` (dispatch `startTournament`)
 - Test: `Tests/PokerCoreTests/HandStartTests.swift`
 
 **Interfaces:**
+
 - Consumes: Task 1
 - Produces:
   - `extension GameState { mutating func startHand() }` – resets hand fields, posts blinds, sets `toActIndex`
@@ -191,6 +197,7 @@ git commit -m "feat(core): package scaffold, types, lobby commands, CI"
   - `public var potTotal: Chips` (sum of all `handBet`)
   - `public var minRaiseTo: Chips { currentBet + lastRaiseSize }`
   - Test helpers in `Helpers.swift`:
+
     ```swift
     let t0 = Date(timeIntervalSince1970: 0)
     let tenTwenty = [BlindLevel(smallBlind: 10, bigBlind: 20, duration: 600)]
@@ -250,12 +257,15 @@ Position rules: with ≥3 active players the SB is the next non-eliminated seat 
 ### Task 3: Betting rounds
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift` (dispatch `act`)
 - Test: `Tests/PokerCoreTests/BettingTests.swift`
 
 **Interfaces:**
+
 - Consumes: Task 2 (`startHand`, helpers)
 - Produces:
+
   ```swift
   public struct LegalActions: Equatable, Sendable {
       public var canCheck: Bool; public var callAmount: Chips   // additional chips to call, 0 if check is possible
@@ -330,6 +340,7 @@ Position rules: with ≥3 active players the SB is the next non-eliminated seat 
 - [ ] **Step 3: Implement**
 
 Authorization in `Game.apply`, in this order: `phase != .betting` → `.invalidPhase`; `player` is not at `toActIndex` → `.notYourTurn`; `actor != player` and `actor != hostID` → `.notYourTurn`; `actor == hostID != player` with an action other than fold/check → `.illegalAction`. Rules:
+
 - `check`: only if `roundBet == currentBet`, otherwise `.illegalAction`
 - `call`: only if `currentBet > roundBet`; pays `min(diff, stack)`, stack 0 → all-in
 - `raiseTo(x)`: only if `mayRaise`, otherwise `.illegalAction`; `minRaiseTo ≤ x ≤ roundBet + stack`, otherwise `.invalidAmount`; `x == roundBet + stack` → all-in
@@ -348,11 +359,13 @@ Authorization in `Game.apply`, in this order: `phase != .betting` → `.invalidP
 ### Task 4: Pot calculation
 
 **Files:**
+
 - Create: `Sources/PokerCore/Pots.swift`
 - Modify: `Sources/PokerCore/Hand.swift` (entering the showdown uses `computePots`)
 - Test: `Tests/PokerCoreTests/PotTests.swift`
 
 **Interfaces:**
+
 - Produces: `func computePots(_ seats: [Seat]) -> [Pot]` (internal) – main pot first, `eligible` in seat order
 
 - [ ] **Step 1: Failing tests** (helper `func seat(_ id: PlayerID, bet: Chips, allIn: Bool = false, folded: Bool = false) -> Seat` in the test file)
@@ -388,10 +401,12 @@ merge consecutive pots with the same eligible; drop pots with amount 0
 ### Task 5: All-in and running out to the showdown
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Hand.swift`
 - Test: `Tests/PokerCoreTests/AllInTests.swift`
 
 **Interfaces:**
+
 - Consumes: Task 3, Task 4 (`computePots`)
 - Produces: complete `allIn` action; behavior "no betting round possible → showdown"
 
@@ -445,10 +460,12 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
 ### Task 6: Resolving the showdown
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Pots.swift`, `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift`
 - Test: `Tests/PokerCoreTests/ShowdownTests.swift`
 
 **Interfaces:**
+
 - Consumes: Task 4, Task 5
 - Produces: `func split(_ amount: Chips, among winners: [PlayerID], seats: [Seat], buttonIndex: Int) -> [PlayerID: Chips]` (internal); dispatch `resolveShowdown`; test helper `mutating func checkDown() throws(Rejection)` (checks/calls until `phase != .betting`) in `Helpers.swift`
 
@@ -494,10 +511,12 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
 ### Task 7: Hand end, elimination, next hand, removing players
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Hand.swift`, `Sources/PokerCore/Game.swift`
 - Test: `Tests/PokerCoreTests/HandEndTests.swift`
 
 **Interfaces:**
+
 - Consumes: Task 6
 - Produces: `extension GameState { mutating func finishHand() }` (elimination, tournament end); dispatch `startNextHand`, `removePlayer` during the game; `public var ranking: [Seat]` (by `eliminatedRank`, winner first)
 
@@ -552,12 +571,15 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
 ### Task 8: Blind clock
 
 **Files:**
+
 - Create: `Sources/PokerCore/Clock.swift`
 - Modify: `Sources/PokerCore/Game.swift`, `Sources/PokerCore/Hand.swift`
 - Test: `Tests/PokerCoreTests/ClockTests.swift`
 
 **Interfaces:**
+
 - Produces:
+
   ```swift
   extension BlindClock {
       mutating func advance(to now: Date, levels: [BlindLevel])
@@ -566,6 +588,7 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
       public func remaining(at now: Date) -> TimeInterval   // pausedRemaining, otherwise max(0, levelEndsAt − now)
   }
   ```
+
   Dispatch `pauseClock`, `resumeClock` (host only).
 
 - [ ] **Step 1: Failing tests** (`twoLevels = [BlindLevel(10, 20, 600), BlindLevel(20, 40, 600)]`, hand 1 finished by fold, fold)
@@ -600,10 +623,12 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
 ### Task 9: Undo and persistability
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Game.swift`
 - Test: `Tests/PokerCoreTests/UndoTests.swift`
 
 **Interfaces:**
+
 - Produces: dispatch `undo` (host only, `state = history.removeLast()`); `Game` serializes losslessly with `JSONEncoder`/`JSONDecoder` (the app's persistence file comes in plan 3)
 
 - [ ] **Step 1: Failing tests**
@@ -630,6 +655,7 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
     #expect(try Wire.decoder.decode(Game.self, from: data) == g)
 }
 ```
+
 (`Wire.encoder/decoder` arrive in Task 10; until then use `JSONEncoder()`/`JSONDecoder()` in this test and switch in Task 10.)
 
 - [ ] **Step 2: Run** `swift test --filter UndoTests` → Expected: FAIL
@@ -645,12 +671,15 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
 ### Task 10: Wire protocol and PROTOCOL.md
 
 **Files:**
+
 - Create: `Sources/PokerCore/Wire.swift`, `docs/PROTOCOL.md`
 - Modify: `docs/superpowers/specs/2026-11-11-pokerchipcase-design.md` (protocol section: client → host are `hello` and `command`)
 - Test: `Tests/PokerCoreTests/WireTests.swift`
 
 **Interfaces:**
+
 - Produces:
+
   ```swift
   public struct Hello: Codable, Equatable, Sendable { public var protocolVersion: Int; public var name: String; public var token: String? }
   public struct Welcome: Codable, Equatable, Sendable { public var player: PlayerID; public var token: String }
@@ -670,6 +699,7 @@ On entering the showdown: pots with exactly one eligible player (uncalled bets) 
       public static func decodeServer(_ data: Data) throws -> (id: UUID, message: ServerMessage)
   }
   ```
+
   Envelope: `{"v": 1, "type": "<case>", "id": "<UUID>", "payload": <payload>}`; `type` is the case name (`hello`, `command`, `welcome`, `ack`, `state`, `error`).
 
 - [ ] **Step 1: Failing tests**
@@ -687,6 +717,7 @@ let id1 = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 @Test func versionMismatchRejected() // JSON with "v":2 → WireError.versionMismatch(2)
 @Test func unknownTypeRejected()     // "type":"bogus" → WireError.unknownType("bogus")
 ```
+
 Also switch `UndoTests.gameRoundTripsThroughJSON` to `Wire.encoder/decoder`.
 
 - [ ] **Step 2: Run** `swift test --filter WireTests` → Expected: FAIL

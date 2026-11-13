@@ -25,9 +25,11 @@
 - All code, comments, commits and PR text in English
 - Package check: `swift test` → all tests pass
 - **App build check**, from the repo root:
+
   ```bash
   xcodegen generate --spec App/project.yml && xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
   ```
+
   Expected: exit code 0
 
 ## Review Focus
@@ -45,6 +47,7 @@
 ### Task 1: Drop redundant memberwise inits in the package
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Hand.swift:262-267` (`LegalActions`)
 - Modify: `Sources/PokerCore/Types.swift:85-88` (`Pot`)
 - Modify: `Sources/PokerSession/Display.swift:9-12` (`QuickPick`)
@@ -52,6 +55,7 @@
 - Modify: `Sources/PokerNet/HostSnapshot.swift:13-18` (`HostSnapshot`)
 
 **Interfaces:**
+
 - Produces: the same initializer labels as today, now `internal` (synthesized). No caller outside the declaring module exists.
 
 - [ ] **Step 1: Delete the five `public init(...)` blocks.** Keep everything else in each type.
@@ -62,12 +66,14 @@
 ### Task 2: Trim app view boilerplate
 
 **Files:**
+
 - Modify: `App/Sources/TableView.swift:9-12`, `App/Sources/HostMenu.swift:18-22`, `App/Sources/ShowdownView.swift:69-72` (`NextHandBar`), `App/Sources/RankingView.swift:10-14` — delete the hand-written `init`
 - Modify: `App/Sources/TableScreen.swift:28` — pass `onLeave: leave` to `RankingView`
 - Modify: `App/Sources/RankingView.swift:30-35` — button action becomes `Button("Leave table", action: onLeave)`
 - Modify: `App/Sources/TableScreen.swift:66-74` — banner hoist
 
 **Interfaces:**
+
 - Consumes: `TableScreen.leave()` (private, already calls `session.leave()` then `onLeave()`).
 - Keep the explicit `init` in `TableScreen`, `ActionBar`, `ShowdownView`, `LobbyView`: their `@State private` properties make the synthesized init private.
 
@@ -86,6 +92,7 @@ PR A is UI-touching: open it, do not auto-merge; the user reviews.
 ### Task 3: Remove `Hello.protocolVersion`, rely on the envelope `v`
 
 **Files:**
+
 - Modify: `Sources/PokerCore/Wire.swift:3-14` — remove the field and its init parameter
 - Modify: `Sources/PokerNet/TableHost.swift:148` — delete the `protocolVersion` guard
 - Modify: `Sources/PokerNet/TableClient.swift:113` — `Hello(name: name, token: token)`
@@ -95,6 +102,7 @@ PR A is UI-touching: open it, do not auto-merge; the user reviews.
 - Modify: `docs/PROTOCOL.md:50,138,162` — example, error table row, versioning paragraph
 
 **Interfaces:**
+
 - Produces: `public struct Hello { var name: String; var token: String? }`, `init(name:token:)`.
 
 - [ ] **Step 1: Rewrite the two host tests to send the envelope mismatch** (covers `TableHost.swift:106`, untested today):
