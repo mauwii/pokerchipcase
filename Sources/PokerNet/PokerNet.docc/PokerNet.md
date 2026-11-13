@@ -8,7 +8,7 @@ PokerNet lets one device host a table and others join it over the local network.
 
 ## Topics
 
-### Protocol
+### Wire protocol
 
 - <doc:Protocol>
 
