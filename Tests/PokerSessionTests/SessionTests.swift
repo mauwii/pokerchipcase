@@ -102,8 +102,10 @@ struct SessionTests {
         defer { Task { await anna.leave() } }
         let ben = await guestSession(anna)
         defer { Task { await ben.leave() } }
-        try await eventually { ben.state?.seats.count == 2 }
+        // Anna sends, so Anna's state must include Ben; otherwise the host rejects the start as .staleState.
+        try await eventually { anna.state?.seats.count == 2 }
         await anna.send(.startTournament(button: anna.me!))
+        #expect(anna.rejection == nil)
         try await eventually { ben.state?.phase == .betting && file.load()?.game.state.phase == .betting }
         let snap = try #require(file.load())
         let port = anna.port!
