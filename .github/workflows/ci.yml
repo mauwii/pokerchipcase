@@ -41,8 +41,9 @@ jobs:
       - name: Coverage report
         run: |
           set -o pipefail
-          BIN=$(swift build --show-bin-path)
-          PROFILE="$(dirname "$(swift test --show-codecov-path)")/default.profdata"
+          CODECOV=$(dirname "$(swift test --show-codecov-path)")
+          PROFILE="$CODECOV/default.profdata"
+          BIN=$(dirname "$CODECOV")
           # one bundle per test target or one for the package, depending on the build system
           OBJECTS=()
           for bundle in "$BIN"/*.xctest; do
