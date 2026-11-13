@@ -14,7 +14,7 @@ This document describes everything a compatible client (for example an Android a
 | PSK test vector | code `4711` → `67a659eb4579867f3873c0e9311b75f65b3d6d0b7c0c7cdc7687d0fb78f423f2` (hex) |
 | Peer-to-peer | iOS additionally uses AWDL (`includePeerToPeer`); other platforms use the shared Wi-Fi |
 
-A wrong table code makes the TLS handshake fail. JSON is encoded compactly and therefore never contains a raw newline. A peer that receives a longer line drops the connection.
+A wrong table code makes the TLS handshake fail: the host cannot verify the client's `Finished` and sends a `bad_record_mac` alert. JSON is encoded compactly and therefore never contains a raw newline. A peer that receives a longer line drops the connection.
 
 ## Envelope
 
@@ -169,7 +169,7 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 - If no answer to a `command` arrives within 10 s, drop the connection and reconnect with the token.
 - After `versionMismatch`, `tableFull`, `gameInProgress`, `removed`, `tableClosed` or `replaced`, do not reconnect automatically.
 - Any other `error` before `welcome` answers your `hello`, so the host cannot serve this client (for example an older host that answers `malformed` to a newer `hello`). Stop and treat it like `versionMismatch` instead of waiting for a `welcome` that never comes.
-- Treat a connection that fails before the TLS handshake completes as a wrong code (do not retry), unless the host was unreachable (connection refused, timeout, no route, DNS). A connection that drops after the handshake is retried.
+- Treat a `bad_record_mac` alert during the TLS handshake as a wrong code (do not retry). Retry every other failure, before or after the handshake: a host that is suspended or shuts down mid-handshake ends the connection with a reset or another TLS error.
 - Resolve the Bonjour service to an address before the TLS connection. Apple's Network.framework retries a failed handshake on a service endpoint forever instead of reporting it, so a wrong code would never fail. The iOS app resolves with a plain TCP connection, which the host sees as one extra connection that ends before TLS.
 - The cipher suite is plain TLS-PSK, which not every TLS stack offers by default (on Android, check the platform stack; BouncyCastle `bctls` supports it).
 

@@ -52,20 +52,21 @@ struct ChannelTests {
         #expect(try await rec.waitForEnd() as? ChannelError == .handshakeFailed)
     }
 
-    /// A peer that resets the connection before the handshake completed: on a real network this is
-    /// how a wrong code can end, instead of a TLS alert (#50).
-    @Test func resetBeforeReadyFailsHandshake() async throws {
-        let listener = try NWListener(using: .tcp, on: .any)
-        defer { listener.cancel() }
-        listener.newConnectionHandler = { connection in
+    /// A host that resets the connection mid-handshake, like a suspended or cancelled host: a drop, not a
+    /// wrong code (#36).
+    @Test func resetBeforeReadyIsNotAHandshakeFailure() async throws {
+        let end = try await endOfHandshake { connection in
             connection.stateUpdateHandler = { if case .ready = $0 { connection.forceCancel() } }
-            connection.start(queue: .global())
         }
-        let port = try await listener.startAndWaitUntilReady(queue: .global())
-        let channel = MessageChannel(to: loopback(port), code: code4711)
-        let rec = EventRecorder(channel.events)
-        channel.start()
-        #expect(try await rec.waitForEnd() as? ChannelError == .handshakeFailed)
+        #expect(end as? NWError == .posix(.ECONNRESET))
+    }
+
+    /// A host that reads the ClientHello, then closes: a TLS error, but not the PSK-mismatch alert (#36).
+    @Test func otherTLSErrorBeforeReadyIsNotAHandshakeFailure() async throws {
+        let end = try await endOfHandshake { connection in
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { _, _, _, _ in connection.cancel() }
+        }
+        #expect(end as? NWError == .tls(errSSLClosedNoNotify))
     }
 
     /// Port 1 on loopback: nothing listens, so the connection is refused. A just-cancelled listener is not
@@ -112,6 +113,21 @@ struct ChannelTests {
         _ = try await rec.first { $0 == .message(big) }
         channel.cancel()
     }
+}
+
+/// How a TLS channel ends against a plain TCP peer that `abort`s each connection before the handshake completes.
+private func endOfHandshake(_ abort: @escaping @Sendable (NWConnection) -> Void) async throws -> (any Error)? {
+    let listener = try NWListener(using: .tcp, on: .any)
+    defer { listener.cancel() }
+    listener.newConnectionHandler = { connection in
+        abort(connection)
+        connection.start(queue: .global())
+    }
+    let port = try await listener.startAndWaitUntilReady(queue: .global())
+    let channel = MessageChannel(to: loopback(port), code: code4711)
+    let rec = EventRecorder(channel.events)
+    channel.start()
+    return try await rec.waitForEnd()
 }
 
 /// PSK listener that hands every accepted channel's recorder to `channels`.

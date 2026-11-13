@@ -111,17 +111,12 @@ final class MessageChannel: @unchecked Sendable {
         connection.cancel()
     }
 
-    /// Before the TLS connection is ready, every failure except an unreachable host counts as a failed
-    /// handshake, which with TLS-PSK means a wrong code. After `.ready` or while resolving, it is a drop.
-    /// ponytail: a handshake aborted by the host's suspension also counts (#36); match the PSK alert if that bites.
+    /// A wrong code: the host fails to verify our Finished and sends the bad_record_mac alert (-9820 here,
+    /// -9846 on the host; probed over loopback). Every other failure, before `.ready` too, is a drop and
+    /// retried: a host suspended or cancelled mid-handshake ends it with a reset or another TLS error (#36).
     private func isHandshakeFailure(_ error: Error) -> Bool {
-        guard !isReady, tlsAfterResolving == nil else { return false }
-        switch error as? NWError {
-        case .dns: return false
-        case let .posix(code):
-            return ![.ECONNREFUSED, .ETIMEDOUT, .EHOSTUNREACH, .EHOSTDOWN, .ENETUNREACH, .ENETDOWN].contains(code)
-        default: return true
-        }
+        guard !isReady, case let .tls(status) = error as? NWError else { return false }
+        return [errSSLPeerBadRecordMac, errSSLBadRecordMac].contains(status)
     }
 
     private func receive() {
