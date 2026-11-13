@@ -11,6 +11,7 @@ public struct SessionProblem: Equatable, Sendable {
     public var message: String
 }
 
+/// How the session's connection to the table is doing.
 public enum ConnectionStatus: Equatable, Sendable { case connecting, connected, reconnecting, failed(ClientFailure) }
 
 /// One device's seat at a table: the host device runs the `TableHost` and joins it over loopback,

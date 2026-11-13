@@ -1,5 +1,6 @@
 import Foundation
 
+/// First message of a client: who it is and, when reconnecting, its token.
 public struct Hello: Codable, Equatable, Sendable {
     public var name: String
     /// Reconnect token from an earlier `welcome`.
@@ -11,6 +12,7 @@ public struct Hello: Codable, Equatable, Sendable {
     }
 }
 
+/// The host's answer to a `hello`: the player's ID and a token to reconnect with.
 public struct Welcome: Codable, Equatable, Sendable {
     public var player: PlayerID
     public var token: String
@@ -21,11 +23,13 @@ public struct Welcome: Codable, Equatable, Sendable {
     }
 }
 
+/// Outcome of a command: accepted, or rejected with a reason.
 public enum AckResult: Codable, Equatable, Sendable {
     case ok
     case rejected(reason: Rejection)
 }
 
+/// The host's answer to one client message.
 public struct Ack: Codable, Equatable, Sendable {
     /// `id` of the client message being answered.
     public var id: UUID
@@ -37,6 +41,7 @@ public struct Ack: Codable, Equatable, Sendable {
     }
 }
 
+/// A command sent by a client, tagged with the state version it was based on.
 public struct CommandRequest: Codable, Equatable, Sendable {
     public var command: Command
     /// `GameState.version` of the last `state` the client saw.
@@ -48,11 +53,13 @@ public struct CommandRequest: Codable, Equatable, Sendable {
     }
 }
 
+/// A message from a client to the host.
 public enum ClientMessage: Equatable, Sendable {
     case hello(Hello)
     case command(CommandRequest)
 }
 
+/// A message from the host to a client.
 public enum ServerMessage: Equatable, Sendable {
     case welcome(Welcome)
     case ack(Ack)
@@ -61,10 +68,12 @@ public enum ServerMessage: Equatable, Sendable {
 }
 
 /// Machine-readable codes sent as the payload of `ServerMessage.error`.
+/// Why a wire message could not be decoded.
 public enum WireErrorCode: String, Sendable {
     case versionMismatch, tableFull, gameInProgress, helloRequired, malformed, removed, tableClosed, replaced
 }
 
+/// Why a wire message could not be decoded.
 public enum WireError: Error, Equatable {
     case versionMismatch(Int)
     case unknownType(String)

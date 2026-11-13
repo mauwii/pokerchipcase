@@ -1,8 +1,11 @@
 import Foundation
 
+/// An amount of play-money chips.
 public typealias Chips = Int
+/// Identifies a player at the table.
 public typealias PlayerID = String
 
+/// One step of the blind schedule; `duration` is in seconds.
 public struct BlindLevel: Codable, Equatable, Sendable {
     public var smallBlind: Chips
     public var bigBlind: Chips
@@ -15,6 +18,7 @@ public struct BlindLevel: Codable, Equatable, Sendable {
     }
 }
 
+/// Starting stack and blind schedule of a tournament.
 public struct TournamentConfig: Codable, Equatable, Sendable {
     public var startingStack: Chips
     public var levels: [BlindLevel]
@@ -50,6 +54,7 @@ public struct TournamentConfig: Codable, Equatable, Sendable {
     ]
 }
 
+/// A player's seat: their stack, bets in the current hand and tournament status.
 public struct Seat: Codable, Equatable, Sendable {
     public var id: PlayerID
     public var name: String
@@ -75,19 +80,23 @@ public struct Seat: Codable, Equatable, Sendable {
     public var isEliminated: Bool { eliminatedRank != nil }
 }
 
+/// Where the game is in its lifecycle.
 public enum Phase: String, Codable, Equatable, Sendable {
     case lobby, betting, showdown, handComplete, finished
 }
 
+/// The betting round of a hand.
 public enum Street: String, Codable, Equatable, Sendable {
     case preflop, flop, turn, river
 }
 
+/// A main or side pot and the players who can win it.
 public struct Pot: Codable, Equatable, Sendable {
     public var amount: Chips
     public var eligible: [PlayerID]
 }
 
+/// Progress through the blind levels; `levelEndsAt` is nil while the clock is paused or not started.
 public struct BlindClock: Codable, Equatable, Sendable {
     public var levelIndex = 0
     public var levelEndsAt: Date?
@@ -96,6 +105,7 @@ public struct BlindClock: Codable, Equatable, Sendable {
     public init() {}
 }
 
+/// The complete table state that the host sends to every client.
 public struct GameState: Codable, Equatable, Sendable {
     public var config: TournamentConfig
     public var hostID: PlayerID
