@@ -165,10 +165,13 @@ private struct JoinSheet: View {
     let onJoin: (TableCode) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
+    @FocusState private var codeFocused: Bool
 
     var body: some View {
         NavigationStack {
-            Form { TextField("Code", text: $text).keyboardType(.numberPad) }
+            // Focused on open, so the number pad is up and the code can be typed right away.
+            Form { TextField("Code", text: $text).keyboardType(.numberPad).focused($codeFocused) }
+                .onAppear { codeFocused = true }
                 .navigationTitle(table.name)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
