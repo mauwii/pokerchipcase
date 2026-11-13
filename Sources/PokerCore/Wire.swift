@@ -68,7 +68,6 @@ public enum ServerMessage: Equatable, Sendable {
 }
 
 /// Machine-readable codes sent as the payload of `ServerMessage.error`.
-/// Why a wire message could not be decoded.
 public enum WireErrorCode: String, Sendable {
     case versionMismatch, tableFull, gameInProgress, helloRequired, malformed, removed, tableClosed, replaced
 }
