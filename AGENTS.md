@@ -37,3 +37,10 @@ Run both from the repo root before opening a PR; CI runs the same two.
 - Design specs go in `docs/superpowers/specs/YYYY-MM-DD-<topic>.md`.
 - Implementation plans go in `docs/superpowers/plans/YYYY-MM-DD-<topic>.md` and are committed before implementation starts.
 - `.superpowers/` holds local run state (ledgers, briefs) and stays local.
+- An agent-made PR links its spec and plan, or puts the same content in the PR body. Typos, dependency bumps and single-file fixes need neither.
+- Deferred review findings become GitHub issues labeled `deferred` plus one of `core`, `net`, `protocol`, `app`.
+
+## Agent tooling
+
+- `.claude/settings.json` enables the Superpowers and Ponytail plugins for Claude Code, each marketplace pinned to a release tag. Both are optional; install with `claude plugin install superpowers@superpowers-dev --scope project` and `claude plugin install ponytail@ponytail --scope project`.
+- A `ponytail:` comment marks a deliberate simplification and names its ceiling and upgrade path. Carry it along when you edit that code; delete it when you do the upgrade.
