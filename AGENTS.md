@@ -10,6 +10,7 @@ Run both from the repo root before opening a PR; CI runs the same two.
 - App build:
 
   ```sh
+  brew install xcodegen
   xcodegen generate --spec App/project.yml
   xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
   ```
