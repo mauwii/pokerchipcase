@@ -47,6 +47,8 @@ The job `test` in `.github/workflows/ci.yml` runs the scan, so the test suite ru
      Sources > coverage.report
    ```
 
+   On the CI runner the bundle names differ (one bundle for the package instead of one per target), so the step globs `$BIN/*.xctest` and passes every bundle's binary, joined with `-object`; the profile comes from `dirname $(swift test --show-codecov-path)`.
+
    This is the `llvm-cov show` text format that `sonar.swift.coverage.reportPaths` reads. Passing `Sources` limits the report to library code.
 
    The same step appends the per-file table of `xcrun llvm-cov report` (same profile, objects and `Sources`) as a code block under `### Coverage` to `$GITHUB_STEP_SUMMARY`, so the run page shows coverage without a download. It runs with or without the token. Line-by-line coverage is in SonarCloud.

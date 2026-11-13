@@ -40,11 +40,15 @@ jobs:
       # the per-file table goes to the job summary, also for runs without the token
       - name: Coverage report
         run: |
+          set -o pipefail
           BIN=$(swift build --show-bin-path)
-          OBJECTS=("$BIN/PokerCoreTests.xctest/Contents/MacOS/PokerCoreTests"
-            -object "$BIN/PokerNetTests.xctest/Contents/MacOS/PokerNetTests"
-            -object "$BIN/PokerSessionTests.xctest/Contents/MacOS/PokerSessionTests")
-          PROFILE="$BIN/codecov/default.profdata"
+          PROFILE="$(dirname "$(swift test --show-codecov-path)")/default.profdata"
+          # one bundle per test target or one for the package, depending on the build system
+          OBJECTS=()
+          for bundle in "$BIN"/*.xctest; do
+            [ ${#OBJECTS[@]} -gt 0 ] && OBJECTS+=(-object)
+            OBJECTS+=("$bundle/Contents/MacOS/$(basename "$bundle" .xctest)")
+          done
           xcrun llvm-cov show -instr-profile "$PROFILE" "${OBJECTS[@]}" Sources > coverage.report
           {
             echo '### Coverage'
