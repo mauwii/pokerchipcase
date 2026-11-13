@@ -1,6 +1,6 @@
 # Table redesign
 
-Replace the plain list on the table screen with an oval poker table, and add a per-device appearance setting with two themes. The change is app-only: `PokerCore`, `PokerNet`, `PokerSession` and the wire protocol stay as they are.
+Replace the plain list on the table screen with an oval poker table, and add a per-device appearance setting with two themes. The change is app-only apart from one read-only helper in `PokerCore`; `PokerNet`, `PokerSession` and the wire protocol stay as they are.
 
 ## Context
 
@@ -33,7 +33,7 @@ Out of scope, for a later spec: a redesign of the start, lobby and ranking scree
 
 The table fills the space between the header and the bottom area. The seat layout math is a pure function in its own file, so it can be tested later.
 
-- **Seats:** all players not yet eliminated, evenly spaced on an ellipse in seat order. The view is rotated so that my seat is at the bottom. If I am eliminated or a spectator, the first remaining seat goes to the bottom. Eliminated players do not appear on the table.
+- **Seats:** all players not yet eliminated, evenly spaced on an ellipse in seat order. The view is rotated so that my seat is at the bottom. If I am eliminated or a spectator, the first remaining seat goes to the bottom. Eliminated players do not appear on the table. The order comes from `GameState.tableOrder(viewer:)` in `PokerCore`, which has tests; the app only places the seats on the ellipse.
 - **A seat** shows the name and the stack. The name is truncated, and the text shrinks through `minimumScaleFactor` when space is tight. Extra marks:
   - the player to act: an accent ring that pulses gently
   - folded: dimmed
