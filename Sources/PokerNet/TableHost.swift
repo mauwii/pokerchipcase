@@ -13,6 +13,8 @@ public actor TableHost {
     private var listener: NWListener?
     /// Identifies `listener` in its callbacks. Not ObjectIdentifier: a new listener can reuse the old one's address.
     private var listenerID = 0
+    /// Finishes once `listener` is cancelled and has let go of its port.
+    private var listenerGone: AsyncStream<Never>?
     /// Port of the last successful start; nil after `stop()`.
     private var port: NWEndpoint.Port?
     private var channels: [UUID: MessageChannel] = [:]
@@ -42,13 +44,20 @@ public actor TableHost {
         listener.newConnectionHandler = { [weak self] connection in
             Task { await self?.accept(connection, from: id) }
         }
+        let (gone, isGone) = AsyncStream<Never>.makeStream()
+        // Started before it is stored, so a concurrent `start` that cancels it always gets the callback.
+        let ready = listener.startReporting(queue: queue) { [weak self] in
+            isGone.finish()
+            Task { await self?.listenerStopped(id) }
+        }
         self.listener = listener
+        listenerGone = gone
         do {
-            let bound = try await listener.startAndWaitUntilReady(queue: queue) { [weak self] in
-                Task { await self?.listenerStopped(id) }
+            for try await bound in ready {
+                self.port = bound
+                return bound
             }
-            self.port = bound
-            return bound
+            throw NWError.posix(.ECANCELED)
         } catch {
             listenerStopped(id)
             throw error
@@ -76,6 +85,7 @@ public actor TableHost {
         port = nil
         listener?.cancel()
         listener = nil
+        listenerGone = nil
         disconnectAll()
     }
 
@@ -85,34 +95,26 @@ public actor TableHost {
         bound = [:]
     }
 
-    /// `callbackLost`: the listener stops, but `listenerStopped` never runs, like a callback that lands late.
+    /// `callbackLost`: the listener stops, but `listenerStopped` ignores it, like a callback that lands late.
     func simulateListenerFailure(callbackLost: Bool = false) {
-        guard let listener else { return }
-        queue.async {
-            if callbackLost { listener.stateUpdateHandler = nil }
-            listener.cancel()
-        }
+        if callbackLost { listenerID += 1 }
+        listener?.cancel()
     }
 
     /// Cancels the listener and waits until it is gone, so a new one can bind the same port.
     private func cancelListener() async {
         guard let old = listener else { return }
+        let gone = listenerGone
         listener = nil
-        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
-            queue.async {
-                if case .cancelled = old.state { return done.resume() }
-                let handler = old.stateUpdateHandler
-                old.stateUpdateHandler = { state in
-                    handler?(state)
-                    if case .cancelled = state { done.resume() }
-                }
-                old.cancel()
-            }
-        }
+        listenerGone = nil
+        old.cancel()
+        if let gone { for await _ in gone {} }
     }
 
     private func listenerStopped(_ id: Int) {
-        if id == listenerID { listener = nil }
+        guard id == listenerID else { return }
+        listener = nil
+        listenerGone = nil
     }
 
     /// Only the current listener's connections; a late one from a replaced listener is turned away.
@@ -247,32 +249,35 @@ public actor TableHost {
 }
 
 extension NWListener {
-    /// Starts the listener and waits until it is ready. `onStopped` fires if it fails or is cancelled later.
-    func startAndWaitUntilReady(
-        queue: DispatchQueue, onStopped: @escaping @Sendable () -> Void = {}
-    ) async throws -> NWEndpoint.Port {
+    /// Starts the listener. The stream yields the port once ready and finishes, or throws if the listener
+    /// fails first. `onCancelled` fires once the listener is cancelled; a failed one cancels itself.
+    func startReporting(
+        queue: DispatchQueue, onCancelled: @escaping @Sendable () -> Void = {}
+    ) -> AsyncThrowingStream<NWEndpoint.Port, Error> {
         let (ready, continuation) = AsyncThrowingStream<NWEndpoint.Port, Error>.makeStream()
         stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
                 if let port = self?.port { continuation.yield(port) }
                 continuation.finish()
-            case let .waiting(error):
-                // E.g. the port is taken; treat as failure instead of hanging.
+            case let .waiting(error), let .failed(error):
+                // Waiting: e.g. the port is taken; treat as failure instead of hanging.
                 continuation.finish(throwing: error)
                 self?.cancel()
-            case let .failed(error):
-                continuation.finish(throwing: error)
-                onStopped()
             case .cancelled:
                 continuation.finish()
-                onStopped()
+                onCancelled()
             default:
                 break
             }
         }
         start(queue: queue)
-        for try await port in ready { return port }
+        return ready
+    }
+
+    /// Starts the listener and waits until it is ready.
+    func startAndWaitUntilReady(queue: DispatchQueue) async throws -> NWEndpoint.Port {
+        for try await port in startReporting(queue: queue) { return port }
         throw NWError.posix(.ECANCELED)
     }
 }
