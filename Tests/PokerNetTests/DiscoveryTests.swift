@@ -65,6 +65,19 @@ struct DiscoveryTests {
         #expect(TableBrowser.status(for: .setup) == nil)
     }
 
+    @Test func duplicatesKeepThePreferredInterface() {
+        func table(_ name: String, _ port: NWEndpoint.Port) -> DiscoveredTable { DiscoveredTable(name: name, endpoint: loopback(port)) }
+        let found: [(table: DiscoveredTable, type: NWInterface.InterfaceType?, interface: String)] = [
+            (table("B", 1), .other, "bridge100"), (table("A", 1), .other, "awdl0"), (table("B", 2), .wifi, "en0"),
+            (table("A", 2), .wiredEthernet, "en5"), (table("B", 3), .loopback, "lo0"), (table("A", 3), .other, "anpi0"),
+        ]
+        let expected = [table("A", 2), table("B", 2)]
+        #expect(TableBrowser.unique(found) == expected && TableBrowser.unique(found.reversed()) == expected)
+        // Same type: the interface name decides, whatever the order.
+        let awdl = [(table("C", 1), NWInterface.InterfaceType.other, "awdl0"), (table("C", 2), .other, "bridge100")]
+        #expect(TableBrowser.unique(awdl) == [table("C", 1)] && TableBrowser.unique(awdl.reversed()) == [table("C", 1)])
+    }
+
     @Test func stoppedHostDisappears() async throws {
         let (host, name) = try await advertisedHost()
         let browser = TableBrowser()
