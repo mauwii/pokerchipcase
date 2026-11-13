@@ -103,7 +103,7 @@ Keep the token secret and store it for reconnects.
 
 `payload.id` is the `id` of the `command` being answered. Every `command` gets exactly one answer: an `ack`, or an `error` whose envelope `id` equals the command's `id` (see below). `hello` gets no `ack`; it gets `welcome` + `state`, or `error`. `result` is `{"ok":{}}` or `{"rejected":{"reason":"<Rejection>"}}`.
 
-Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidShowdown`, `nothingToUndo`, `staleState`.
+Reasons: `notHost`, `notDealer`, `notYourTurn`, `invalidPhase`, `illegalAction`, `invalidAmount`, `unknownPlayer`, `duplicatePlayer`, `tableFull`, `tooFewPlayers`, `invalidConfig`, `invalidShowdown`, `nothingToUndo`, `staleState`.
 
 ### `state` – complete table state
 

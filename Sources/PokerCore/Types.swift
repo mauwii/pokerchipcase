@@ -24,6 +24,12 @@ public struct TournamentConfig: Codable, Equatable, Sendable {
         self.levels = levels
     }
 
+    /// At least one level, every level `0 < smallBlind <= bigBlind` with a positive duration, a positive stack.
+    var isValid: Bool {
+        startingStack > 0 && !levels.isEmpty
+            && levels.allSatisfy { 0 < $0.smallBlind && $0.smallBlind <= $0.bigBlind && $0.duration > 0 }
+    }
+
     private static let standardBlinds: [(Chips, Chips)] = [
         (10, 20), (15, 30), (25, 50), (50, 100), (75, 150),
         (100, 200), (150, 300), (200, 400), (300, 600), (500, 1000),

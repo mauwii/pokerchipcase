@@ -34,7 +34,7 @@ extension GameState {
         var picks: [QuickPick] = []
         for (kind, target) in [(QuickPick.Kind.halfPot, currentBet + base / 2), (.pot, currentBet + base)] {
             let raiseTo = min(max(target, lo), hi)
-            if raiseTo != hi, !picks.contains(where: { $0.raiseTo == raiseTo }) {
+            if raiseTo != hi {
                 picks.append(QuickPick(kind: kind, raiseTo: raiseTo))
             }
         }
