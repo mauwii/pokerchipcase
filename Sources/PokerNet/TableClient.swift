@@ -120,7 +120,9 @@ public actor TableClient {
                 receive(message, id: id)
             } catch WireError.versionMismatch {
                 fail(.versionMismatch)
-            } catch {}
+            } catch {
+                // Skips a message this client cannot decode; the next one may be fine.
+            }
         }
     }
 

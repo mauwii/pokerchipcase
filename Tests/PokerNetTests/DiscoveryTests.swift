@@ -85,7 +85,8 @@ struct DiscoveryTests {
         browser.start()
         _ = try await lists.first(timeout: discoveryTimeout) { $0.contains { $0.name == name } }
         await host.stop()
-        try await eventually(timeout: discoveryTimeout) { await lists.all.last.map { !$0.contains { $0.name == name } } ?? false }
+        let gone: @Sendable () async -> Bool = { await !(lists.all.last?.contains { $0.name == name } ?? true) }
+        try await eventually(timeout: discoveryTimeout, gone)
         browser.stop()
     }
 }

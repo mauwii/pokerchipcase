@@ -84,8 +84,12 @@ struct StartView: View {
         .confirmationDialog("Discard the saved game?", isPresented: $confirmDiscard, titleVisibility: .visible) {
             Button("Discard and create", role: .destructive) { creating = true }
         }
-        .alert("Could not open the table", isPresented: $failed) {}
-        .alert("Could not delete the saved game", isPresented: $deleteFailed) {}
+        .alert("Could not open the table", isPresented: $failed) {
+            // No actions: the system adds an OK button.
+        }
+        .alert("Could not delete the saved game", isPresented: $deleteFailed) {
+            // No actions: the system adds an OK button.
+        }
     }
 
     private func discard<V>(_ file: SaveFile<V>) {

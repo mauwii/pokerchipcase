@@ -2,6 +2,7 @@ import Foundation
 import Network
 import PokerCore
 @testable import PokerNet
+import Testing
 
 struct TimeoutError: Error {}
 
@@ -102,7 +103,7 @@ final class RawClient: Sendable {
     }
 
     func send(_ message: ClientMessage, id: UUID = UUID()) {
-        channel.send(try! Wire.encode(message, id: id))
+        do { channel.send(try Wire.encode(message, id: id)) } catch { Issue.record(error) }
     }
 
     func sendRaw(_ data: Data) { channel.send(data) }
@@ -145,7 +146,7 @@ func startHost(
     _ snapshot: HostSnapshot = testSnapshot(),
     port: NWEndpoint.Port = .any,
     helloTimeout: Duration = .seconds(10),
-    onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }
+    onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }
 ) async throws -> (TableHost, NWEndpoint.Port) {
     let host = TableHost(snapshot: snapshot, helloTimeout: helloTimeout, onChange: onChange)
     return (host, try await host.start(port: port))
@@ -165,7 +166,9 @@ func startEchoListener(code: TableCode) async throws -> (NWListener, NWEndpoint.
                 for try await event in channel.events {
                     if case let .message(data) = event { channel.send(data) }
                 }
-            } catch {}
+            } catch {
+                // The echo just stops; the client side sees the closed channel.
+            }
         }
         channel.start()
     }

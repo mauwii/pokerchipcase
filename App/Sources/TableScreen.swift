@@ -17,7 +17,9 @@ struct TableScreen: View {
 
     private var failure: Binding<Bool> {
         // Not again after its OK when a failed delete kept the screen open.
-        Binding(get: { if case .failed = session.connection { !leaveFailed } else { false } }, set: { _ in })
+        Binding(get: { if case .failed = session.connection { !leaveFailed } else { false } }, set: { _ in
+            // Read-only: the connection state decides, not the alert.
+        })
     }
 
     var body: some View {
