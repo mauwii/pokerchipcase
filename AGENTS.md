@@ -39,7 +39,7 @@ Run these from the repo root before opening a PR; CI runs the same three.
 - Implementation plans go in `docs/superpowers/plans/YYYY-MM-DD-<topic>.md` and are committed before implementation starts.
 - `.superpowers/` holds local run state (ledgers, briefs) and stays local.
 - An agent-made PR links its spec and plan, or puts the same content in the PR body. Typos, dependency bumps and single-file fixes need neither.
-- Deferred review findings become GitHub issues labeled `deferred` plus one of `core`, `net`, `protocol`, `app`.
+- Deferred review findings become GitHub issues labeled `deferred` plus one of `core`, `net`, `protocol`, `app`, `tooling`.
 
 ## Agent tooling
 

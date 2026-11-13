@@ -25,11 +25,50 @@ jobs:
   test:
     runs-on: macos-latest
     timeout-minutes: 30
+    environment: sonarcloud
+    env:
+      # Dependabot and fork PRs get no environment secrets
+      HAS_SONAR_TOKEN: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: swift test
+          # SonarCloud needs the history for new-code detection and blame
+          fetch-depth: 0
+      - run: swift test --enable-code-coverage
+      # coverage.report: llvm-cov show text format, read by sonar.swift.coverage.reportPaths;
+      # the per-file table goes to the job summary, also for runs without the token
+      - name: Coverage report
+        run: |
+          BIN=$(swift build --show-bin-path)
+          OBJECTS=("$BIN/PokerCoreTests.xctest/Contents/MacOS/PokerCoreTests"
+            -object "$BIN/PokerNetTests.xctest/Contents/MacOS/PokerNetTests"
+            -object "$BIN/PokerSessionTests.xctest/Contents/MacOS/PokerSessionTests")
+          PROFILE="$BIN/codecov/default.profdata"
+          xcrun llvm-cov show -instr-profile "$PROFILE" "${OBJECTS[@]}" Sources > coverage.report
+          {
+            echo '### Coverage'
+            echo '```text'
+            xcrun llvm-cov report -instr-profile "$PROFILE" "${OBJECTS[@]}" Sources | sed "s|^$PWD/Sources/||"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: SonarCloud scan
+        if: env.HAS_SONAR_TOKEN == 'true'
+        uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Sonar way rates new code smells only by their debt ratio, so it passes even
+      # critical ones; accepted and false-positive issues do not count
+      - name: Fail on open SonarCloud issues
+        if: env.HAS_SONAR_TOKEN == 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SCOPE: ${{ github.event_name == 'pull_request' && format('pullRequest={0}', github.event.number) || format('branch={0}', github.ref_name) }}
+        run: |
+          curl --fail --silent --show-error --header "Authorization: Bearer $SONAR_TOKEN" \
+            "https://sonarcloud.io/api/issues/search?componentKeys=mauwii_pokerchipcase&$SCOPE&resolved=false&ps=100" > issues.json
+          jq -r '.issues[] | "::error file=\(.component | sub("^[^:]*:"; "")),line=\(.line // 1),title=\(.rule)::\(.message)"' issues.json
+          jq -e '.total == 0' issues.json
   app:
     name: App build
     runs-on: macos-latest
