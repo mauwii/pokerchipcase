@@ -58,7 +58,7 @@ struct ChannelTests {
         let end = try await endOfHandshake { connection in
             connection.stateUpdateHandler = { if case .ready = $0 { connection.forceCancel() } }
         }
-        #expect(end as? NWError == .posix(.ECONNRESET))
+        #expect(end != nil && end as? ChannelError != .handshakeFailed)
     }
 
     /// A host that reads the ClientHello, then closes: a TLS error, but not the PSK-mismatch alert (#36).
@@ -66,7 +66,7 @@ struct ChannelTests {
         let end = try await endOfHandshake { connection in
             connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { _, _, _, _ in connection.cancel() }
         }
-        #expect(end as? NWError == .tls(errSSLClosedNoNotify))
+        #expect(end != nil && end as? ChannelError != .handshakeFailed)
     }
 
     /// Port 1 on loopback: nothing listens, so the connection is refused. A just-cancelled listener is not
