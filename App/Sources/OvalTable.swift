@@ -41,7 +41,8 @@ struct OvalTable: View {
                 pot.position(x: size.width / 2, y: size.height / 2)
                 ForEach(Array(seats.enumerated()), id: \.element.id) { i, seat in
                     let point = seatPoint(index: i, count: seats.count, in: size)
-                    if seat.roundBet > 0 {
+                    // Only while betting: at showdown the bets are already counted in the pot.
+                    if state.phase == .betting, seat.roundBet > 0 {
                         // Halfway: further out, a bet next to a side seat overlaps its label.
                         let at = toward(point, 0.5, in: size)
                         // When the betting round ends, the bet slides into the pot.
@@ -70,15 +71,18 @@ struct OvalTable: View {
                 Text(seat.name).fontWeight(seat.id == viewer ? .heavy : .regular).lineLimit(1)
             }
             HStack(spacing: 3) {
-                Text("\(seat.stack)").monospacedDigit().bold().contentTransition(.numericText())
+                // One Text, so stack, delta and check mark shrink together instead of wrapping one by one.
+                (Text("\(seat.stack)").monospacedDigit()
+                    + (state.phase == .handComplete && delta != 0
+                        ? Text(delta > 0 ? " +\(delta)" : " −\(-delta)").foregroundStyle(delta > 0 ? .green : .red)
+                        : Text(""))
+                    + Text(mark == .selected ? " ✓" : ""))
+                    .bold().contentTransition(.numericText())
                 if seat.allIn { tag("All-in") }
-                if state.phase == .handComplete, delta != 0 {
-                    Text(delta > 0 ? "+\(delta)" : "−\(-delta)").foregroundStyle(delta > 0 ? .green : .red).bold()
-                }
-                if mark == .selected { Text("✓").bold() }
             }
         }
         .font(.caption)
+        .lineLimit(1)
         .minimumScaleFactor(0.7)
         .padding(.horizontal, 5).padding(.vertical, 2)
         .frame(maxWidth: seatWidth)
@@ -104,8 +108,11 @@ struct OvalTable: View {
 
     private var pot: some View {
         VStack(spacing: 2) {
-            if state.potTotal > 0 { chips(3) }
-            Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
+            // Nothing at hand end: "Pot 0" next to the paid-out stacks reads like an error.
+            if state.potTotal > 0 {
+                chips(3)
+                Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
+            }
             if state.pots.count > 1 {
                 Text(state.pots.indices.map { potName($0) + " \(state.pots[$0].amount)" }.joined(separator: " · "))
                     .font(.caption2).foregroundStyle(theme.muted)
