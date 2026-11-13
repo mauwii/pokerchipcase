@@ -11,7 +11,8 @@ private let seatHeight: CGFloat = 38
 /// The radii leave room for a seat label at every point, so labels never leave `size`.
 func seatPoint(index: Int, count: Int, in size: CGSize) -> CGPoint {
     let angle = Double.pi / 2 + 2 * Double.pi * Double(index) / Double(max(count, 1))
-    let rx = size.width / 2 - seatWidth / 2, ry = size.height / 2 - seatHeight / 2
+    let rx = size.width / 2 - seatWidth / 2
+    let ry = size.height / 2 - seatHeight / 2
     return CGPoint(x: size.width / 2 + rx * cos(angle), y: size.height / 2 + ry * sin(angle))
 }
 
@@ -93,11 +94,11 @@ struct OvalTable: View {
                     .phaseAnimator([1.0, 0.4]) { ring, opacity in ring.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.8) }
             } else {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(
-                    mark == .selected ? theme.accent : mark == .selectable ? theme.muted : .clear,
+                    borderColor(mark),
                     lineWidth: mark == .selected ? 2 : 1)
             }
         }
-        .opacity(mark == .dimmed ? 0.3 : seat.folded ? 0.4 : 1)
+        .opacity(seatOpacity(mark, folded: seat.folded))
         .contentShape(.rect)
         .onTapGesture { if mark != .dimmed { onTapSeat?(seat.id) } }
         .allowsHitTesting(onTapSeat != nil)
@@ -120,8 +121,20 @@ struct OvalTable: View {
         }
     }
 
+    private func borderColor(_ mark: SeatMark) -> Color {
+        switch mark {
+        case .selected: theme.accent
+        case .selectable: theme.muted
+        case .normal, .dimmed: .clear
+        }
+    }
+
+    private func seatOpacity(_ mark: SeatMark, folded: Bool) -> Double {
+        if mark == .dimmed { 0.3 } else if folded { 0.4 } else { 1 }
+    }
+
     private func potName(_ i: Int) -> String {
-        i == 0 ? "Main" : state.pots.count == 2 ? "Side" : "Side \(i)"
+        if i == 0 { "Main" } else if state.pots.count == 2 { "Side" } else { "Side \(i)" }
     }
 
     private func bet(_ amount: Chips) -> some View {

@@ -6,3 +6,4 @@ DerivedData/
 .superpowers/
 App/Info.plist
 App/Config/Local.xcconfig
+coverage.report

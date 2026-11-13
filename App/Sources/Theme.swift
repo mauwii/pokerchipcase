@@ -89,7 +89,11 @@ struct ThemeButtonStyle: ButtonStyle {
                 .frame(maxWidth: .infinity).padding(.vertical, 12)
                 .foregroundStyle(role == .fold ? theme.text : theme.background)
                 .background(role == .fold ? theme.fold : theme.accent, in: .rect(cornerRadius: 10))
-                .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.4)
+                .opacity(opacity)
+        }
+
+        private var opacity: Double {
+            if !isEnabled { 0.4 } else if configuration.isPressed { 0.7 } else { 1 }
         }
     }
 }

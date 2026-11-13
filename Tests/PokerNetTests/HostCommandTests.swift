@@ -14,7 +14,7 @@ private struct Table {
     let benWelcome: Welcome
     let version: Int
 
-    static func open(onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) async throws -> Table {
+    static func open(onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }) async throws -> Table {
         let (host, port) = try await startHost(onChange: onChange)
         let anna = try await RawClient.connect(port)
         anna.send(hello("Anna", token: await host.snapshot.hostToken))

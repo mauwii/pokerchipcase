@@ -24,7 +24,7 @@ public actor TableHost {
     /// `onChange` receives every new snapshot; persist it to resume after a crash.
     /// `helloTimeout`: a connection that has not finished TLS and `hello` by then is closed.
     public init(snapshot: HostSnapshot, helloTimeout: Duration = .seconds(10),
-                onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) {
+                onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in /* no observer by default */ }) {
         self.snapshot = snapshot
         self.helloTimeout = helloTimeout
         self.onChange = onChange
@@ -108,7 +108,11 @@ public actor TableHost {
         listener = nil
         listenerGone = nil
         old.cancel()
-        if let gone { for await _ in gone {} }
+        if let gone {
+            for await _ in gone {
+                // Only waits for the stream to end.
+            }
+        }
     }
 
     private func listenerStopped(_ id: Int) {
@@ -128,7 +132,9 @@ public actor TableHost {
                 for try await event in channel.events {
                     if case let .message(data) = event { await self?.receive(data, from: id) }
                 }
-            } catch {}
+            } catch {
+                // A failed channel ends like a closed one: dropped below.
+            }
             await self?.drop(id)
         }
         Task { [weak self, helloTimeout] in
@@ -252,7 +258,7 @@ extension NWListener {
     /// Starts the listener. The stream yields the port once ready and finishes, or throws if the listener
     /// fails first. `onCancelled` fires once the listener is cancelled; a failed one cancels itself.
     func startReporting(
-        queue: DispatchQueue, onCancelled: @escaping @Sendable () -> Void = {}
+        queue: DispatchQueue, onCancelled: @escaping @Sendable () -> Void = { /* no observer by default */ }
     ) -> AsyncThrowingStream<NWEndpoint.Port, Error> {
         let (ready, continuation) = AsyncThrowingStream<NWEndpoint.Port, Error>.makeStream()
         stateUpdateHandler = { [weak self] state in

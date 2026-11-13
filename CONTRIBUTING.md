@@ -34,6 +34,8 @@ xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -des
 
 Install the hooks once with `brew install pre-commit && pre-commit install` to run them on every commit. That is optional; CI runs them anyway.
 
+CI also runs a SonarCloud scan and fails on any open SonarCloud issue in the pull request. Fix it, or mark a false positive or an accepted issue in SonarCloud with a reason. Pull requests from forks get no secrets and are not scanned, so before the merge the maintainer moves a reviewed fork pull request to a branch in this repository, where SonarCloud scans it. Your commits keep you as the author.
+
 The libraries in `Sources/` have unit tests in `Tests/`. Add or update tests for changes there. The SwiftUI app in `App/Sources` has no unit tests; describe what you checked by hand in the simulator.
 
 ## Rules

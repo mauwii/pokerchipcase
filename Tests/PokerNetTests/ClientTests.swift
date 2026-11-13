@@ -35,7 +35,7 @@ private func table() async throws -> (TableHost, NWEndpoint.Port, TableClient, T
 
 /// Scripted host: answers `hello` with welcome + state unless `script` returns lines; never acks on its own.
 private actor FakeHost {
-    typealias Script = @Sendable (_ id: UUID, _ message: ClientMessage) -> (lines: [Data], close: Bool)
+    typealias Script = @Sendable (_ id: UUID, _ message: ClientMessage) throws -> (lines: [Data], close: Bool)
     private var channels: [MessageChannel] = []
     private let script: Script
     let listener: NWListener
@@ -61,14 +61,16 @@ private actor FakeHost {
                     let (id, message) = try Wire.decodeClient(data)
                     try self.respond(id, message, on: channel)
                 }
-            } catch {}
+            } catch {
+                // The test that drives this fake host fails on its own expectations.
+            }
         }
         channel.start()
     }
 
     private func respond(_ id: UUID, _ message: ClientMessage, on channel: MessageChannel) throws {
         if case .hello = message { hellos += 1 }
-        var (lines, close) = script(id, message)
+        var (lines, close) = try script(id, message)
         if lines.isEmpty, case .hello = message {
             lines = [
                 try Wire.encode(ServerMessage.welcome(Welcome(player: "B", token: "t")), id: UUID()),
@@ -189,7 +191,7 @@ struct ClientTests {
     @Test func hostErrorFailsPendingSend() async throws {
         let fake = try FakeHost { id, message in
             guard case .command = message else { return ([], false) }
-            return ([try! Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
+            return ([try Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
         }
         let port = try await fake.start()
         let (ben, events) = await client(port)
@@ -231,7 +233,7 @@ struct ClientTests {
     @Test func errorBeforeWelcomeFailsWithoutRetry() async throws {
         let fake = try FakeHost { id, message in
             guard case .hello = message else { return ([], false) }
-            return ([try! Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
+            return ([try Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
         }
         let port = try await fake.start()
         let (ben, events) = await client(port)
