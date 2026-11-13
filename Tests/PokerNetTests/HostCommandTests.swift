@@ -128,6 +128,27 @@ struct HostCommandTests {
         await host.stop()
     }
 
+    @Test func ensureListeningRestartsBeforeTheStoppedCallback() async throws {
+        let (host, port) = try await startHost()
+        await host.simulateListenerFailure(callbackLost: true)
+        try await eventually { await !host.isListening }
+        try await host.ensureListening()
+        #expect(await host.isListening)
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben"))
+        _ = try await ben.welcome()
+        await host.stop()
+    }
+
+    @Test func restartOnTheSamePortWhileListening() async throws {
+        let (host, port) = try await startHost()
+        #expect(try await host.start(port: port) == port)
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben"))
+        _ = try await ben.welcome()
+        await host.stop()
+    }
+
     @Test func onChangeAfterCommand() async throws {
         let inbox = Inbox()
         let t = try await Table.open(onChange: { s in Task { await inbox.put(s) } })

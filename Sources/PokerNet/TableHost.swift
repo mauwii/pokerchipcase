@@ -28,17 +28,17 @@ public actor TableHost {
 
     public var connectedPlayers: Set<PlayerID> { Set(bound.values) }
 
-    public var isListening: Bool { listener != nil }
+    public var isListening: Bool { listener?.state == .ready }
 
-    /// Starts listening and returns the bound port.
+    /// Starts listening (stopping a previous listener first) and returns the bound port.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
-        listener?.cancel()
+        await cancelListener()
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
         listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
-        listener.newConnectionHandler = { [weak self] connection in
-            Task { await self?.accept(connection) }
-        }
         let id = ObjectIdentifier(listener)
+        listener.newConnectionHandler = { [weak self] connection in
+            Task { await self?.accept(connection, from: id) }
+        }
         self.listener = listener
         do {
             let bound = try await listener.startAndWaitUntilReady(queue: queue) { [weak self] in
@@ -53,9 +53,13 @@ public actor TableHost {
     }
 
     /// Restarts the listener on its previous port if it has stopped (e.g. after the app was suspended).
+    /// Checks the listener's own state: the `listenerStopped` callback can land after the app is active again (#46).
     public func ensureListening() async throws {
-        guard listener == nil, let port else { return }
-        _ = try await start(port: port)
+        guard let port else { return }
+        switch listener?.state {
+        case .setup?, .ready?: return
+        default: _ = try await start(port: port)
+        }
     }
 
     /// Ends the table: every connection gets a final `tableClosed`, then the host stops listening.
@@ -78,16 +82,39 @@ public actor TableHost {
         bound = [:]
     }
 
-    func simulateListenerFailure() {
-        listener?.cancel()
+    /// `callbackLost`: the listener stops, but `listenerStopped` never runs, like a callback that lands late.
+    func simulateListenerFailure(callbackLost: Bool = false) {
+        guard let listener else { return }
+        queue.async {
+            if callbackLost { listener.stateUpdateHandler = nil }
+            listener.cancel()
+        }
+    }
+
+    /// Cancels the listener and waits until it is gone, so a new one can bind the same port.
+    private func cancelListener() async {
+        guard let old = listener else { return }
+        listener = nil
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            queue.async {
+                if case .cancelled = old.state { return done.resume() }
+                let handler = old.stateUpdateHandler
+                old.stateUpdateHandler = { state in
+                    handler?(state)
+                    if case .cancelled = state { done.resume() }
+                }
+                old.cancel()
+            }
+        }
     }
 
     private func listenerStopped(_ id: ObjectIdentifier) {
         if let listener, ObjectIdentifier(listener) == id { self.listener = nil }
     }
 
-    private func accept(_ connection: NWConnection) {
-        guard listener != nil else { return connection.cancel() }
+    /// Only the current listener's connections; a late one from a replaced listener is turned away.
+    private func accept(_ connection: NWConnection, from listenerID: ObjectIdentifier) {
+        guard let listener, ObjectIdentifier(listener) == listenerID else { return connection.cancel() }
         let id = UUID()
         let channel = MessageChannel(connection: connection)
         channels[id] = channel
