@@ -5,7 +5,7 @@ name: Rerun
 on:
   # safe: no checkout, no artifacts; the fork-controlled branch name only goes through env
   workflow_run: # zizmor: ignore[dangerous-triggers]
-    workflows: [CI]
+    workflows: [CI, Docs]
     types: [completed]
 
 permissions: {}

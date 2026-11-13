@@ -1,3 +1,4 @@
+/// What a player does on their turn.
 public enum Action: Codable, Equatable, Sendable {
     case fold
     case check
@@ -7,6 +8,7 @@ public enum Action: Codable, Equatable, Sendable {
     case allIn
 }
 
+/// A request to change the game, applied with ``Game/apply(_:by:at:expectedVersion:)``.
 public enum Command: Codable, Equatable, Sendable {
     case join(player: PlayerID, name: String)
     case removePlayer(player: PlayerID)
@@ -21,6 +23,7 @@ public enum Command: Codable, Equatable, Sendable {
     case undo
 }
 
+/// Why a command was refused; the game stays unchanged.
 public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case notHost
     case notDealer

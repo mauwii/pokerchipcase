@@ -4,10 +4,11 @@ iOS app that replaces the poker chip case for a home Texas Hold'em game, play mo
 
 ## Commands
 
-Run these from the repo root before opening a PR; CI runs the same three.
+Run these from the repo root before opening a PR; CI runs the same four.
 
 - Lint (`brew install pre-commit`): `pre-commit run --all-files`. CI runs it in the `lint` job.
 - Package tests (macOS, no device needed): `swift test`
+- Docs (macOS): `xcodebuild docbuild -scheme PokerChipCase-Package -destination 'generic/platform=macOS' -derivedDataPath .build/docs OTHER_DOCC_FLAGS=--warnings-as-errors -quiet`
 - App build:
 
   ```sh
@@ -22,8 +23,9 @@ Run these from the repo root before opening a PR; CI runs the same three.
 - `Sources/PokerNet`: networking.
 - `Sources/PokerSession`: session state and save file.
 - `App/Sources`: SwiftUI app. It has no unit tests and is tested manually in simulators.
+- `Sources/<Target>/<Target>.docc`: DocC catalogs.
 - `Tests/<Target>Tests`: Swift Testing, one test target per library.
-- `docs/PROTOCOL.md`: the wire protocol. Update it in the same PR as any wire-format change.
+- `Sources/PokerNet/PokerNet.docc/Protocol.md`: the wire protocol. Update it in the same PR as any wire-format change.
 
 ## Rules
 

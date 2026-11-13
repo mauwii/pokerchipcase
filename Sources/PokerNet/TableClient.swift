@@ -2,6 +2,7 @@ import Foundation
 import Network
 import PokerCore
 
+/// Something a ``TableClient`` reports on its `events` stream.
 public enum ClientEvent: Equatable, Sendable {
     case welcome(Welcome)
     case state(GameState)
@@ -11,12 +12,14 @@ public enum ClientEvent: Equatable, Sendable {
     case failed(ClientFailure)
 }
 
+/// Why a ``TableClient`` gave up for good.
 public enum ClientFailure: Equatable, Sendable {
     case wrongCode, versionMismatch, tableFull, gameInProgress, removed, tableClosed
     /// Another connection took this seat with the same token (e.g. the player's second device).
     case replaced
 }
 
+/// Why sending a command through a ``TableClient`` failed.
 public enum ClientError: Error, Equatable {
     case notConnected, connectionLost
     /// The host answered the command with an `error` code instead of an ack.

@@ -1,7 +1,9 @@
 import PokerCore
 
+/// The next thing the dealer has to deal.
 public enum DealerHint: Equatable, Sendable { case dealHand, dealFlop, dealTurn, dealRiver, dealRest }
 
+/// A preset raise offered as a shortcut, with the resulting total bet of the round in `raiseTo`.
 public struct QuickPick: Equatable, Sendable {
     public enum Kind: Equatable, Sendable { case halfPot, pot, allIn }
     public var kind: Kind

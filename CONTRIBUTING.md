@@ -24,11 +24,12 @@ Launch the app with the argument `-debugTable` to get a table full of bots on a 
 
 ## Checks
 
-Run these from the repo root before you open a pull request. CI runs the same three.
+Run these from the repo root before you open a pull request. CI runs the same four.
 
 ```sh
 pre-commit run --all-files
 swift test
+xcodebuild docbuild -scheme PokerChipCase-Package -destination 'generic/platform=macOS' -derivedDataPath .build/docs OTHER_DOCC_FLAGS=--warnings-as-errors -quiet
 xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
 ```
 
@@ -45,7 +46,7 @@ The full list is in [AGENTS.md](AGENTS.md). The ones that matter most:
 - Swift 6 language mode with strict concurrency.
 - Code, comments, docs and commits in English.
 - Edit `App/project.yml`, never the generated `App/PokerChipCase.xcodeproj` or `App/Info.plist`.
-- A change to the wire format updates [docs/PROTOCOL.md](docs/PROTOCOL.md) in the same pull request.
+- A change to the wire format updates [Sources/PokerNet/PokerNet.docc/Protocol.md](Sources/PokerNet/PokerNet.docc/Protocol.md) in the same pull request.
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/), e.g. `fix(app): …`, `feat(core): …`, `docs: …`.
 
 ## Pull requests

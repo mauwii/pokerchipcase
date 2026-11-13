@@ -264,6 +264,7 @@ extension GameState {
     }
 }
 
+/// What the player to act may do right now, with the amounts in chips.
 public struct LegalActions: Equatable, Sendable {
     public var canCheck: Bool
     /// Additional chips needed to call; 0 when checking is possible.

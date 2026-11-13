@@ -2,11 +2,13 @@ import Foundation
 import Network
 import PokerCore
 
+/// A table found nearby, with the Bonjour endpoint to connect to.
 public struct DiscoveredTable: Hashable, Sendable {
     public var name: String
     public var endpoint: NWEndpoint
 }
 
+/// Health of a ``TableBrowser``.
 public enum BrowserStatus: Equatable, Sendable {
     case browsing, localNetworkDenied, failed
 }

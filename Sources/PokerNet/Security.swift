@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import Network
 
-/// TLS 1.2 with a pre-shared key derived from the table code, see docs/PROTOCOL.md.
+/// TLS 1.2 with a pre-shared key derived from the table code, see <doc:Protocol>.
 enum PSK {
     static let identity = "pokerchipcase"
 

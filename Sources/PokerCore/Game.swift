@@ -2,6 +2,7 @@ import Foundation
 
 public let maxSeats = 10
 
+/// A tournament in progress: the current state plus the earlier states that `undo` steps back to.
 public struct Game: Codable, Equatable, Sendable {
     public internal(set) var state: GameState
     public internal(set) var history: [GameState] = []

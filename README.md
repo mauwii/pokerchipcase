@@ -67,7 +67,7 @@ The package has no third-party dependencies: besides its own modules it uses onl
 
 ## Protocol
 
-The host is the source of truth; players send commands and receive the table state. [docs/PROTOCOL.md](docs/PROTOCOL.md) describes the wire format in enough detail to write a compatible client for another platform, such as Android.
+The host is the source of truth; players send commands and receive the table state. [Sources/PokerNet/PokerNet.docc/Protocol.md](Sources/PokerNet/PokerNet.docc/Protocol.md) describes the wire format in enough detail to write a compatible client for another platform, such as Android. The API reference and the protocol are also online at <https://mauwii.github.io/pokerchipcase/documentation/>.
 
 ## Contributing
 
