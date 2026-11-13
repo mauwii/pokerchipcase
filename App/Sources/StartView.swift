@@ -15,6 +15,7 @@ struct StartView: View {
     @State private var failed = false
     @State private var deleteFailed = false
     @State private var busy = false
+    @State private var showSettings = false
 
     private var name: String { playerName.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -56,8 +57,13 @@ struct StartView: View {
                 }
             }
             .navigationTitle("PokerChipCase")
+            .toolbar { Button("Settings", systemImage: "gearshape") { showSettings = true } }
         }
+        .sheet(isPresented: $showSettings) { SettingsView() }
         .task { await nearby.run() }
+        #if DEBUG
+        .task { if DebugBots.auto, !name.isEmpty { host(.newTable(hostName: name, tableName: defaultTableName, config: .quick)) } }
+        #endif
         .onAppear(perform: reload)
         .sheet(isPresented: $creating) {
             CreateTableSheet(defaultName: defaultTableName, busy: busy) { tableName, config in

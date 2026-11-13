@@ -4,6 +4,14 @@ extension GameState {
     public var potTotal: Chips { seats.reduce(0) { $0 + $1.handBet } }
     public var minRaiseTo: Chips { currentBet + lastRaiseSize }
 
+    /// Seats still in the tournament, in seat order, starting at `viewer`
+    /// (or at the first remaining seat if `viewer` is nil, eliminated or unknown).
+    public func tableOrder(viewer: PlayerID?) -> [Seat] {
+        let remaining = seats.filter { !$0.isEliminated }
+        let start = remaining.firstIndex { $0.id == viewer } ?? 0
+        return Array(remaining[start...] + remaining[..<start])
+    }
+
     var activeSeatCount: Int { seats.count { !$0.isEliminated } }
 
     /// Next seat after `i` (clockwise, `i` itself last) that satisfies `where`.

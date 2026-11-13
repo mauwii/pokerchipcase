@@ -59,6 +59,10 @@ struct LobbyView: View {
                         Task { await session.send(.startTournament(button: button)) }
                     }
                     .disabled(state.seats.count < 2 || session.isSending)
+                    #if DEBUG
+                    Button("Add bots") { DebugBots.fill(session, seated: state.seats.count) }
+                        .disabled(state.seats.count >= maxSeats)
+                    #endif
                 }
             } else {
                 Section { Text("Waiting for \(state.seat(state.hostID)?.name ?? "the host") to start") }
@@ -66,5 +70,8 @@ struct LobbyView: View {
         }
         .environment(\.editMode, .constant(session.isHost ? .active : .inactive))
         .task { if session.isHost { await nearby.run() } }
+        #if DEBUG
+        .task { if DebugBots.auto, session.isHost { await DebugBots.autoStart(session) } }
+        #endif
     }
 }
