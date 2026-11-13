@@ -61,6 +61,9 @@ struct StartView: View {
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .task { await nearby.run() }
+        #if DEBUG
+        .task { if DebugBots.auto, !name.isEmpty { host(.newTable(hostName: name, tableName: defaultTableName, config: .quick)) } }
+        #endif
         .onAppear(perform: reload)
         .sheet(isPresented: $creating) {
             CreateTableSheet(defaultName: defaultTableName, busy: busy) { tableName, config in
