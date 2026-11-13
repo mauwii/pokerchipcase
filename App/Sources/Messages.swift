@@ -39,6 +39,7 @@ extension Rejection {
         case .duplicatePlayer: "That player is already seated"
         case .tableFull: "The table is full"
         case .tooFewPlayers: "At least 2 players are needed"
+        case .invalidConfig: "Invalid tournament settings"
         case .invalidShowdown: "Pick at least one winner for every pot"
         case .nothingToUndo: "Nothing to undo"
         case .staleState: "The table changed – please try again"

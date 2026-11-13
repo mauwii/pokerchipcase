@@ -116,7 +116,8 @@ extension GameState {
         }
     }
 
-    /// All-in as a call, a full raise or an incomplete raise (does not reopen raising for players who already acted).
+    /// All-in as a call, a full raise or an incomplete raise. An incomplete raise reopens raising only for players
+    /// who now face at least a full raise since they last acted (TDA Rule 43: several short all-ins can add up).
     mutating func goAllIn(seat i: Int) throws(Rejection) {
         let x = seats[i].roundBet + seats[i].stack
         if x <= currentBet {
@@ -131,7 +132,8 @@ extension GameState {
         post(seats[i].stack, seat: i)
         currentBet = x
         for j in seats.indices where j != i && canAct(seats[j]) {
-            if seats[j].acted { seats[j].mayRaise = false }
+            // A player who acted has matched the bet they faced, so `roundBet` is that bet.
+            if seats[j].acted || !seats[j].mayRaise { seats[j].mayRaise = x - seats[j].roundBet >= lastRaiseSize }
             seats[j].acted = false
         }
     }
@@ -175,9 +177,11 @@ extension GameState {
         pots = []
         for pot in computePots(seats) {
             if pot.eligible.count == 1, let j = index(of: pot.eligible[0]) {
-                // Uncalled bet goes back.
+                // Uncalled bet goes back, with folded players' chips above the highest call.
+                // This pot is the top one, so every bet is cut to that call.
+                let called = seats.filter { !$0.folded && $0.id != seats[j].id }.map(\.handBet).max() ?? 0
                 seats[j].stack += pot.amount
-                seats[j].handBet -= pot.amount
+                for k in seats.indices { seats[k].handBet = min(seats[k].handBet, called) }
             } else {
                 pots.append(pot)
             }
@@ -211,14 +215,15 @@ extension GameState {
         eliminateBusted()
     }
 
-    /// Players without chips are eliminated; among several, whoever had more at hand start places better.
+    /// Players without chips are eliminated. Among several, players removed by the host (folded with no chips)
+    /// place last, then whoever had more at hand start places better; equal players share a rank.
     mutating func eliminateBusted() {
         let remaining = activeSeatCount
-        let busted = seats.indices
-            .filter { !seats[$0].isEliminated && seats[$0].stack == 0 }
-            .sorted { seats[$0].stackAtHandStart > seats[$1].stackAtHandStart }
-        for (k, j) in busted.enumerated() {
-            seats[j].eliminatedRank = remaining - busted.count + 1 + k
+        let busted = seats.indices.filter { !seats[$0].isEliminated && seats[$0].stack == 0 }
+        let keys = busted.map { (seats[$0].folded ? 0 : 1, seats[$0].stackAtHandStart) }
+        let ranks = keys.map { k in remaining - busted.count + 1 + keys.count { $0 > k } }
+        for (j, rank) in zip(busted, ranks) {
+            seats[j].eliminatedRank = rank
         }
         if activeSeatCount <= 1 { phase = .finished }
     }

@@ -32,6 +32,8 @@ public enum Rejection: String, Error, Codable, Equatable, Sendable {
     case duplicatePlayer
     case tableFull
     case tooFewPlayers
+    /// The tournament config has no levels, a non-positive stack or duration, or a small blind outside `1...bigBlind`.
+    case invalidConfig
     case invalidShowdown
     case nothingToUndo
     /// The command was based on an outdated state.
