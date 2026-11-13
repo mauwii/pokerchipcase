@@ -149,6 +149,20 @@ struct HostCommandTests {
         await host.stop()
     }
 
+    /// A new listener can get the old one's address; its late stopped callback must not clear the new one.
+    @Test func manySamePortRestartsKeepTheHostReachable() async throws {
+        let (host, port) = try await startHost()
+        let token = await host.snapshot.hostToken
+        for _ in 0..<50 {
+            #expect(try await host.start(port: port) == port)
+            let anna = try await RawClient.connect(port)
+            anna.send(hello("Anna", token: token))
+            _ = try await anna.welcome()
+            anna.close()
+        }
+        await host.stop()
+    }
+
     @Test func onChangeAfterCommand() async throws {
         let inbox = Inbox()
         let t = try await Table.open(onChange: { s in Task { await inbox.put(s) } })

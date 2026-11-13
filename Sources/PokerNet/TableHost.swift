@@ -11,6 +11,8 @@ public actor TableHost {
     private let onChange: @Sendable (HostSnapshot) -> Void
     private let queue = DispatchQueue(label: "pokernet.host")
     private var listener: NWListener?
+    /// Identifies `listener` in its callbacks. Not ObjectIdentifier: a new listener can reuse the old one's address.
+    private var listenerID = 0
     /// Port of the last successful start; nil after `stop()`.
     private var port: NWEndpoint.Port?
     private var channels: [UUID: MessageChannel] = [:]
@@ -35,7 +37,8 @@ public actor TableHost {
         await cancelListener()
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
         listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
-        let id = ObjectIdentifier(listener)
+        listenerID += 1
+        let id = listenerID
         listener.newConnectionHandler = { [weak self] connection in
             Task { await self?.accept(connection, from: id) }
         }
@@ -108,13 +111,13 @@ public actor TableHost {
         }
     }
 
-    private func listenerStopped(_ id: ObjectIdentifier) {
-        if let listener, ObjectIdentifier(listener) == id { self.listener = nil }
+    private func listenerStopped(_ id: Int) {
+        if id == listenerID { listener = nil }
     }
 
     /// Only the current listener's connections; a late one from a replaced listener is turned away.
-    private func accept(_ connection: NWConnection, from listenerID: ObjectIdentifier) {
-        guard let listener, ObjectIdentifier(listener) == listenerID else { return connection.cancel() }
+    private func accept(_ connection: NWConnection, from id: Int) {
+        guard listener != nil, id == listenerID else { return connection.cancel() }
         let id = UUID()
         let channel = MessageChannel(connection: connection)
         channels[id] = channel
