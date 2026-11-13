@@ -62,7 +62,7 @@ public enum ServerMessage: Equatable, Sendable {
 
 /// Machine-readable codes sent as the payload of `ServerMessage.error`.
 public enum WireErrorCode: String, Sendable {
-    case versionMismatch, tableFull, gameInProgress, helloRequired, malformed, removed
+    case versionMismatch, tableFull, gameInProgress, helloRequired, malformed, removed, tableClosed
 }
 
 public enum WireError: Error, Equatable {

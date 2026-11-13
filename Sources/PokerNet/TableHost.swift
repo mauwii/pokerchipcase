@@ -54,6 +54,13 @@ public actor TableHost {
         _ = try await start(port: port)
     }
 
+    /// Ends the table: every connection gets a final `tableClosed`, then the host stops listening.
+    public func end() {
+        for id in channels.keys { reject(.tableClosed, id, replyTo: nil) }
+        stop()
+    }
+
+    /// Stops without telling anyone, like a host that vanished; clients keep reconnecting.
     public func stop() {
         port = nil
         listener?.cancel()
@@ -125,11 +132,18 @@ public actor TableHost {
         } catch {
             return send(.ack(Ack(id: messageID, result: .rejected(reason: error))), to: id)
         }
+        if case let .removePlayer(removed) = request.command { forget(removed) }
         forgetRemovedPlayers()
         onChange(snapshot)
         // State before ack: when a client's send returns, it already knows the new state version.
         broadcastState()
         send(.ack(Ack(id: messageID, result: .ok)), to: id)
+    }
+
+    /// A player removed mid-game keeps the seat (folded, out) but loses the token and connection.
+    private func forget(_ player: PlayerID) {
+        snapshot.tokens = snapshot.tokens.filter { $0.value != player }
+        for (id, p) in bound where p == player { reject(.removed, id, replyTo: nil) }
     }
 
     /// Players without a seat (removed in the lobby, or their join was undone) lose their token and connection.

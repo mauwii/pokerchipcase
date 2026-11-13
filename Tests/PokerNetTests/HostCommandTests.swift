@@ -91,6 +91,22 @@ struct HostCommandTests {
         await t.host.stop()
     }
 
+    @Test func removedMidGameIsDisconnectedAndForgotten() async throws {
+        let t = try await Table.open()
+        let cem = try await RawClient.connect(t.port)
+        cem.send(hello("Cem"))
+        _ = try await cem.welcome()
+        let state = try await t.anna.state { $0.seats.count == 3 }
+        t.anna.send(t.command(.startTournament(button: t.hostID), version: state.version))
+        let running = try await t.anna.state { $0.phase == .betting }
+        t.anna.send(t.command(.removePlayer(player: t.benWelcome.player), version: running.version))
+        #expect(try await t.ben.error() == WireErrorCode.removed.rawValue)
+        try await t.ben.waitForClose()
+        #expect(await t.host.snapshot.tokens[t.benWelcome.token] == nil)
+        #expect(await t.host.snapshot.game.state.seat(t.benWelcome.player) != nil)  // seat kept mid-game
+        await t.host.stop()
+    }
+
     @Test func errorReplyCarriesRequestID() async throws {
         let t = try await Table.open()
         let id = UUID()

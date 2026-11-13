@@ -12,7 +12,7 @@ public enum ClientEvent: Equatable, Sendable {
 }
 
 public enum ClientFailure: Equatable, Sendable {
-    case wrongCode, versionMismatch, tableFull, gameInProgress, removed
+    case wrongCode, versionMismatch, tableFull, gameInProgress, removed, tableClosed
 }
 
 public enum ClientError: Error, Equatable {
@@ -140,6 +140,7 @@ public actor TableClient {
             case .tableFull: fail(.tableFull)
             case .gameInProgress: fail(.gameInProgress)
             case .removed: fail(.removed)
+            case .tableClosed: fail(.tableClosed)
             default: break
             }
         }
