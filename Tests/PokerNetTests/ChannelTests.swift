@@ -68,11 +68,10 @@ struct ChannelTests {
         #expect(try await rec.waitForEnd() as? ChannelError == .handshakeFailed)
     }
 
+    /// Port 1 on loopback: nothing listens, so the connection is refused. A just-cancelled listener is not
+    /// used here, because under load it can still accept and then drop the connection.
     @Test func refusedConnectionIsNotAHandshakeFailure() async throws {
-        let (listener, port) = try await startEchoListener(code: code4711)
-        listener.cancel()
-        try await Task.sleep(for: .milliseconds(100))
-        let channel = MessageChannel(to: loopback(port), code: code4711)
+        let channel = MessageChannel(to: loopback(1), code: code4711)
         let rec = EventRecorder(channel.events)
         channel.start()
         let end = try await rec.waitForEnd()
