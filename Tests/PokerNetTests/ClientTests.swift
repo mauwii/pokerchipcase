@@ -293,6 +293,13 @@ struct ClientTests {
         #expect(!(await events.all.contains(.connectionLost)))
     }
 
+    @Test func eventsFinishWhenTheClientIsReleased() async throws {
+        var ben: TableClient? = TableClient(endpoint: loopback(1), code: code4711, name: "Ben")
+        let events = EventRecorder(ben!.events)
+        ben = nil
+        #expect(try await events.waitForEnd() == nil)
+    }
+
     @Test func releasedClientClosesItsConnection() async throws {
         let (host, port) = try await startHost()
         var ben: TableClient? = TableClient(endpoint: loopback(port), code: code4711, name: "Ben")

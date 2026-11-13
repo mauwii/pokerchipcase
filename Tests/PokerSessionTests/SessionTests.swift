@@ -232,7 +232,11 @@ struct SessionTests {
     @Test func snapshotWithoutHostTokenThrows() async throws {
         var snap = HostSnapshot.newTable(hostName: "Anna", tableName: "Test", code: code4711, config: .relaxed)
         snap.tokens = [:]
-        await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: tempFile()) }
+        let file: SaveFile<HostSnapshot> = tempFile()
+        let saved = HostSnapshot.newTable(hostName: "Ben", tableName: "Old", code: code4711, config: .relaxed)
+        try file.save(saved)
+        await #expect(throws: CocoaError.self) { try await TableSession.host(snap, saveFile: file) }
+        #expect(file.load() == saved)
     }
 
     @Test func snapshotWithoutHostSeatThrows() async throws {
