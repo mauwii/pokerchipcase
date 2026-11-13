@@ -1,4 +1,4 @@
-# PokerChipCase
+# <img src="App/Sources/Assets.xcassets/AppIcon.appiconset/icon.png" width="40" alt="App icon"> PokerChipCase
 
 An iOS app that replaces the poker chip case at a Texas Hold'em night among friends – everything except the deck of cards. Players use real cards, every player uses the app on their own iPhone, and betting happens in the app. Play money only, no real money.
 
