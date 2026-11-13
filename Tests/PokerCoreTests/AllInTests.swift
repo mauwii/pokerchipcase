@@ -46,3 +46,22 @@ import Testing
     try g.act(.raiseTo(amount: 150))     // C's whole stack, below minRaiseTo 180
     #expect(g.state.seat("C")?.allIn == true && g.state.currentBet == 150)
 }
+
+@Test func shortAllInsAddingUpToAFullRaiseReopenRaising() throws {
+    var g = try Game.started(["A": 150, "B": 190, "C": 1000, "D": 1000])
+    try g.act(.raiseTo(amount: 100))   // D, raise of 80
+    try g.act(.allIn)                  // A to 150: incomplete
+    try g.act(.allIn)                  // B to 190: incomplete, but 90 above D's 100
+    try g.act(.call)                   // C
+    #expect(g.toAct == "D" && g.state.legalActions(for: "D")?.minRaiseTo == 270)
+}
+
+@Test func refundedTopPotDoesNotMakeHandBetNegative() throws {
+    var g = try Game.started(["A": 1000, "B": 100, "C": 1000])
+    try g.act(.raiseTo(amount: 300)); try g.act(.allIn); try g.act(.call)
+    try g.act(.check); try g.act(.raiseTo(amount: 200)); try g.act(.fold)   // flop: C checks, A bets, C folds
+    #expect(g.state.phase == .showdown)
+    #expect(g.state.seats.map(\.handBet) == [100, 100, 100])
+    #expect(g.state.pots == [Pot(amount: 300, eligible: ["A", "B"])] && g.state.potTotal == 300)
+    #expect(g.state.seat("A")?.stack == 1100)
+}

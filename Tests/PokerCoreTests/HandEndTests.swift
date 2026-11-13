@@ -56,3 +56,19 @@ import Testing
     try g.apply(.removePlayer(player: "B"), by: "A", at: t0)
     #expect(g.toAct == "C")
 }
+
+@Test func removedChipLeaderRanksBelowPlayerBustedInSameHand() throws {
+    var g = try Game.started(["A": 1000, "B": 5000, "C": 300, "D": 1000])
+    try g.apply(.removePlayer(player: "B"), by: "A", at: t0)
+    try g.act(.allIn); try g.act(.fold); try g.act(.call)   // D all-in, A folds, C calls all-in
+    try g.apply(.resolveShowdown(winners: [["D"]]), by: "A", at: t0)
+    #expect(g.state.seat("C")?.eliminatedRank == 3 && g.state.seat("B")?.eliminatedRank == 4)
+}
+
+@Test func equalStartingStacksShareARank() throws {
+    var g = try Game.started(["A": 1000, "B": 300, "C": 300])
+    try g.act(.allIn); try g.act(.call); try g.act(.call)
+    try g.apply(.resolveShowdown(winners: [["A"]]), by: "A", at: t0)
+    #expect(g.state.phase == .finished)
+    #expect(g.state.seat("B")?.eliminatedRank == 2 && g.state.seat("C")?.eliminatedRank == 2)
+}

@@ -50,3 +50,11 @@ private extension GameState {
     let data = try Wire.encoder.encode(g)
     #expect(try Wire.decoder.decode(Game.self, from: data) == g)
 }
+
+@Test func undoAfterPauseUndoesTheActionAndKeepsThePause() throws {
+    var g = try Game.started()
+    try g.act(.fold)
+    try g.apply(.pauseClock, by: "A", at: t0 + 100)
+    try g.apply(.undo, by: "A", at: t0 + 100)
+    #expect(g.state.seat("A")?.folded == false && g.state.clock.isPaused)
+}

@@ -45,3 +45,21 @@ import Testing
     let g = try Game.started()
     #expect(g.state.clock.levelIndex == 0 && g.state.clock.levelEndsAt == t0 + 600)
 }
+
+@Test(arguments: [
+    TournamentConfig(startingStack: 1000, levels: []),
+    TournamentConfig(startingStack: 0, levels: tenTwenty),
+    TournamentConfig(startingStack: 1000, levels: [BlindLevel(smallBlind: 0, bigBlind: 0, duration: 600)]),
+    TournamentConfig(startingStack: 1000, levels: [BlindLevel(smallBlind: 30, bigBlind: 20, duration: 600)]),
+    TournamentConfig(startingStack: 1000, levels: [BlindLevel(smallBlind: 10, bigBlind: 20, duration: 0)]),
+])
+func invalidConfigRejected(config: TournamentConfig) throws {
+    var g = Game(hostID: "A", hostName: "A", config: config)
+    try g.apply(.join(player: "B", name: "B"), by: "A", at: t0)
+    #expect(throws: Rejection.invalidConfig) { try g.apply(.startTournament(button: "A"), by: "A", at: t0) }
+}
+
+@Test func presetsAreValid() {
+    let valid = TournamentConfig.presets.allSatisfy { $0.config.isValid }
+    #expect(valid)
+}

@@ -23,12 +23,14 @@ public struct Game: Codable, Equatable, Sendable {
         let version = state.version + 1
         if command == .undo {
             guard actor == state.hostID else { throw .notHost }
-            guard let previous = history.popLast() else { throw .nothingToUndo }
+            guard var previous = history.popLast() else { throw .nothingToUndo }
+            // The clock is not undone: a pause survives undoing the misclick it was taken for.
+            if previous.phase != .lobby { previous.clock = state.clock }
             state = previous
         } else {
             var next = state
             try next.apply(command, by: actor, at: now)
-            history.append(state)
+            if command != .pauseClock, command != .resumeClock { history.append(state) }
             state = next
         }
         state.version = version
@@ -62,6 +64,7 @@ extension GameState {
         case let .startTournament(button):
             try requireLobbyHost(actor)
             guard seats.count >= 2 else { throw .tooFewPlayers }
+            guard config.isValid else { throw .invalidConfig }
             guard let b = index(of: button) else { throw .unknownPlayer }
             buttonIndex = b
             handNumber = 1
