@@ -24,11 +24,12 @@ Launch the app with the argument `-debugTable` to get a table full of bots on a 
 
 ## Checks
 
-Run these from the repo root before you open a pull request. CI runs the same three.
+Run these from the repo root before you open a pull request. CI runs the same four.
 
 ```sh
 pre-commit run --all-files
 swift test
+xcodebuild docbuild -scheme PokerChipCase-Package -destination 'generic/platform=macOS' -derivedDataPath .build/docs OTHER_DOCC_FLAGS=--warnings-as-errors -quiet
 xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
 ```
 

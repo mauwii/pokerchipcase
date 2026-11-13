@@ -4,10 +4,11 @@ iOS app that replaces the poker chip case for a home Texas Hold'em game, play mo
 
 ## Commands
 
-Run these from the repo root before opening a PR; CI runs the same three.
+Run these from the repo root before opening a PR; CI runs the same four.
 
 - Lint (`brew install pre-commit`): `pre-commit run --all-files`. CI runs it in the `lint` job.
 - Package tests (macOS, no device needed): `swift test`
+- Docs (macOS): `xcodebuild docbuild -scheme PokerChipCase-Package -destination 'generic/platform=macOS' -derivedDataPath .build/docs OTHER_DOCC_FLAGS=--warnings-as-errors -quiet`
 - App build:
 
   ```sh
