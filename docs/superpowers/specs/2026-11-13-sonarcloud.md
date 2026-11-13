@@ -36,15 +36,20 @@ The job `test` in `.github/workflows/ci.yml` runs the scan, so the test suite ru
 
 1. `environment: sonarcloud`, and `env: HAS_SONAR_TOKEN: ${{ secrets.SONAR_TOKEN != '' }}`. Runs without the token (Dependabot) skip every Sonar step and pass on the tests alone.
 2. `swift test --enable-code-coverage`.
-3. If the token is there, write the report:
+3. Write the report, with or without the token:
 
    ```sh
-   xcrun llvm-cov show -instr-profile .build/debug/codecov/default.profdata \
-     .build/debug/PokerChipCasePackageTests.xctest/Contents/MacOS/PokerChipCasePackageTests \
+   BIN=$(swift build --show-bin-path)
+   xcrun llvm-cov show -instr-profile "$BIN/codecov/default.profdata" \
+     "$BIN/PokerCoreTests.xctest/Contents/MacOS/PokerCoreTests" \
+     -object "$BIN/PokerNetTests.xctest/Contents/MacOS/PokerNetTests" \
+     -object "$BIN/PokerSessionTests.xctest/Contents/MacOS/PokerSessionTests" \
      Sources > coverage.report
    ```
 
    This is the `llvm-cov show` text format that `sonar.swift.coverage.reportPaths` reads. Passing `Sources` limits the report to library code.
+
+   The same step appends the per-file table of `xcrun llvm-cov report` (same profile, objects and `Sources`) as a code block under `### Coverage` to `$GITHUB_STEP_SUMMARY`, so the run page shows coverage without a download. It runs with or without the token. Line-by-line coverage is in SonarCloud.
 4. `SonarSource/sonarqube-scan-action`, pinned by commit SHA with a version comment, with `SONAR_TOKEN` from the environment.
 5. "Fail on open SonarCloud issues": Sonar way rates new code smells only by their debt ratio, so the gate passes even critical ones. This step queries `https://sonarcloud.io/api/issues/search?componentKeys=mauwii_pokerchipcase&<scope>&resolved=false&ps=100` with `curl`, where `<scope>` is `pullRequest=<number>` on PRs and `branch=<name>` otherwise. It prints each issue as a `::error file=…,line=…,title=<rule>::<message>` annotation with `jq` and fails unless `.total == 0`. Accepted and false-positive issues count as resolved and do not fail it.
 

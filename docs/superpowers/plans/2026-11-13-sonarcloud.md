@@ -20,7 +20,7 @@
 
 ## Review Focus
 
-- A Dependabot PR (no token): the `test` job passes on `swift test` alone, every Sonar step skipped.
+- A Dependabot PR (no token): the `test` job passes on `swift test` alone, every Sonar step skipped, and the coverage table still lands in the job summary.
 - The report contains only `Sources/` files, never `Tests/` or `.build/`.
 - `coverage.report` must not be committed (`.gitignore`).
 - The issue-check `SCOPE` on a `push` to `main` must be `branch=main`, on a PR `pullRequest=<number>`; a wrong scope passes silently with `total: 0`.
@@ -60,16 +60,22 @@
           # SonarCloud needs the history for new-code detection and blame
           fetch-depth: 0
       - run: swift test --enable-code-coverage
-      # llvm-cov show text format, read by sonar.swift.coverage.reportPaths
-      - name: Write the coverage report
-        if: env.HAS_SONAR_TOKEN == 'true'
+      # coverage.report: llvm-cov show text format, read by sonar.swift.coverage.reportPaths;
+      # the per-file table goes to the job summary, also for runs without the token
+      - name: Coverage report
         run: |
           BIN=$(swift build --show-bin-path)
-          xcrun llvm-cov show -instr-profile "$BIN/codecov/default.profdata" \
-            "$BIN/PokerCoreTests.xctest/Contents/MacOS/PokerCoreTests" \
-            -object "$BIN/PokerNetTests.xctest/Contents/MacOS/PokerNetTests" \
-            -object "$BIN/PokerSessionTests.xctest/Contents/MacOS/PokerSessionTests" \
-            Sources > coverage.report
+          OBJECTS=("$BIN/PokerCoreTests.xctest/Contents/MacOS/PokerCoreTests"
+            -object "$BIN/PokerNetTests.xctest/Contents/MacOS/PokerNetTests"
+            -object "$BIN/PokerSessionTests.xctest/Contents/MacOS/PokerSessionTests")
+          PROFILE="$BIN/codecov/default.profdata"
+          xcrun llvm-cov show -instr-profile "$PROFILE" "${OBJECTS[@]}" Sources > coverage.report
+          {
+            echo '### Coverage'
+            echo '```text'
+            xcrun llvm-cov report -instr-profile "$PROFILE" "${OBJECTS[@]}" Sources | sed "s|^$PWD/Sources/||"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: SonarCloud scan
         if: env.HAS_SONAR_TOKEN == 'true'
         uses: SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304 # v8.4.0
@@ -89,7 +95,7 @@
           jq -e '.total == 0' issues.json
 ```
 
-Ruling already taken here: the spec names one test binary `PokerChipCasePackageTests`; the package builds three (`PokerCoreTests`, `PokerNetTests`, `PokerSessionTests`), so the report merges them with `-object`. Locally this covers 16 of the 17 files in `Sources/`; `PokerCore/Command.swift` has no executable code.
+Note: the package builds three test binaries (`PokerCoreTests`, `PokerNetTests`, `PokerSessionTests`), so the report merges them with `-object`. Locally this covers 16 of the 17 files in `Sources/`; `PokerCore/Command.swift` has no executable code.
 
 - [ ] **Step 4: Docs**
 
