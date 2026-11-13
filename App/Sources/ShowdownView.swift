@@ -22,7 +22,7 @@ struct ShowdownView: View {
                 if state.pots.count > 1 {
                     Picker("Pot", selection: $pot) {
                         ForEach(state.pots.indices, id: \.self) { i in
-                            Text(i == 0 ? "Main \(state.pots[i].amount)" : "Side \(i) \(state.pots[i].amount)").tag(i)
+                            Text("\(potName(i, of: state.pots.count)) \(state.pots[i].amount)").tag(i)
                         }
                     }
                     .pickerStyle(.segmented)

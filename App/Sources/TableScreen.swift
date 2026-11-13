@@ -55,6 +55,7 @@ struct TableScreen: View {
                 }
             }
             .hostConfirmation($hostPending, session: session)
+            .onChange(of: session.state?.version) { hostPending = nil }
             .confirmationDialog(
                 session.isHost ? "End the table for everyone?" : "Leave the table? You can't rejoin once the tournament has started.",
                 isPresented: $confirmLeave, titleVisibility: .visible
