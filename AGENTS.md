@@ -22,8 +22,9 @@ Run these from the repo root before opening a PR; CI runs the same three.
 - `Sources/PokerNet`: networking.
 - `Sources/PokerSession`: session state and save file.
 - `App/Sources`: SwiftUI app. It has no unit tests and is tested manually in simulators.
+- `Sources/<Target>/<Target>.docc`: DocC catalogs.
 - `Tests/<Target>Tests`: Swift Testing, one test target per library.
-- `docs/PROTOCOL.md`: the wire protocol. Update it in the same PR as any wire-format change.
+- `Sources/PokerNet/PokerNet.docc/Protocol.md`: the wire protocol. Update it in the same PR as any wire-format change.
 
 ## Rules
 
