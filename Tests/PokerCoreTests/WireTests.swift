@@ -25,6 +25,11 @@ private func json(_ data: Data) -> String { String(decoding: data, as: UTF8.self
         #"{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":1}"#)
 }
 
+@Test func legacyHelloWithProtocolVersionDecodes() throws {
+    let data = Data(#"{"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna","protocolVersion":1},"type":"hello","v":1}"#.utf8)
+    #expect(try Wire.decodeClient(data).message == .hello(Hello(name: "Anna", token: nil)))
+}
+
 @Test func clientRoundTrip() throws {
     for message: ClientMessage in [
         .hello(Hello(name: "Ben", token: "t")),
