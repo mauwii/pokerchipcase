@@ -13,6 +13,7 @@ struct StartView: View {
     @State private var joining: DiscoveredTable?
     @State private var confirmDiscard = false
     @State private var failed = false
+    @State private var deleteFailed = false
     @State private var busy = false
 
     private var name: String { playerName.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -36,11 +37,11 @@ struct StartView: View {
                                 Text(savedGame.tableName).font(.caption).foregroundStyle(.secondary)
                             }
                         }
-                        Button("Discard", role: .destructive) { SaveFile.host.delete(); reload() }
+                        Button("Discard", role: .destructive) { discard(SaveFile.host) }
                     }
                     if let ticket {
                         Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }
-                        Button("Discard", role: .destructive) { SaveFile.seat.delete(); reload() }
+                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }
                     }
                     Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
@@ -78,6 +79,12 @@ struct StartView: View {
             Button("Discard and create", role: .destructive) { creating = true }
         }
         .alert("Could not open the table", isPresented: $failed) {}
+        .alert("Could not delete the saved game", isPresented: $deleteFailed) {}
+    }
+
+    private func discard<V>(_ file: SaveFile<V>) {
+        do { try file.delete() } catch { deleteFailed = true }
+        reload()
     }
 
     private func reload() {

@@ -8,6 +8,7 @@ struct TableScreen: View {
     let onLeave: () -> Void
     @State private var confirmLeave = false
     @State private var hostPending: HostConfirm?
+    @State private var leaveFailed = false
 
     init(session: TableSession, onLeave: @escaping () -> Void) {
         self.session = session
@@ -15,7 +16,8 @@ struct TableScreen: View {
     }
 
     private var failure: Binding<Bool> {
-        Binding(get: { if case .failed = session.connection { true } else { false } }, set: { _ in })
+        // Not again after its OK when a failed delete kept the screen open.
+        Binding(get: { if case .failed = session.connection { !leaveFailed } else { false } }, set: { _ in })
     }
 
     var body: some View {
@@ -71,6 +73,8 @@ struct TableScreen: View {
                 Text("Sending…")
             } else if let rejection = session.rejection {
                 Text(rejection.message).foregroundStyle(.red)
+            } else if let problem = session.problem {
+                Text(problem.text).foregroundStyle(.red)
             }
         }
         .frame(maxWidth: .infinity).padding(6).background(.bar)
@@ -78,8 +82,8 @@ struct TableScreen: View {
 
     private func leave() {
         Task {
-            await session.leave()
-            onLeave()
+            // A failed delete keeps the table open with the banner; leaving again retries.
+            if await session.leave() { onLeave() } else { leaveFailed = true }
         }
     }
 }

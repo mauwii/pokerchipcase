@@ -23,7 +23,9 @@ public struct SaveFile<Value: Codable & Sendable>: Sendable {
     }
 
     /// No error if missing.
-    public func delete() { try? FileManager.default.removeItem(at: url) }
+    public func delete() throws {
+        do { try FileManager.default.removeItem(at: url) } catch CocoaError.fileNoSuchFile {}
+    }
 }
 
 extension SaveFile where Value == HostSnapshot {
