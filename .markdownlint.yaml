@@ -1,0 +1,9 @@
+# The docs are not wrapped.
+MD013: false
+# The tables use compact |---| separator rows.
+MD060: false
+# The README shows the screenshots in one row, which needs width on the images.
+MD033:
+  allowed_elements: [p, img]
+# The PR template and the CLAUDE.md import are not documents with a title.
+MD041: false

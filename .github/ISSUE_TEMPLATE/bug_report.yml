@@ -1,0 +1,41 @@
+name: Bug report
+description: Something in the app or a library does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: dropdown
+    id: role
+    attributes:
+      label: Role
+      options:
+        - Host
+        - Guest
+        - Offline (no network)
+    validations:
+      required: true
+  - type: input
+    id: devices-count
+    attributes:
+      label: Number of devices at the table
+  - type: textarea
+    id: devices
+    attributes:
+      label: Devices
+      description: Model and iOS version of every device involved, one per line.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version or commit
+      description: The version from Settings, or the commit SHA you built.

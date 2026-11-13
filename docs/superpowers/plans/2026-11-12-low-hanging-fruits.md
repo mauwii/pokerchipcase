@@ -19,9 +19,11 @@
 - Test suites keep `.timeLimit(.minutes(1))`; network waits use the existing `eventually` / `EventRecorder` helpers (max 5 s)
 - Package check: `swift test` → all tests pass
 - **App build check** (Tasks 8–11, 13–14), from the repo root:
+
   ```bash
   xcodegen generate --spec App/project.yml && xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
   ```
+
   Expected: exit code 0
 - Each PR body lists `Closes #n` for every issue it fixes. An issue whose fix was cut short gets a comment saying what was left out instead of being closed
 - New review findings that are deferred become GitHub issues with the label `deferred` plus the area label (`net`, `app`, `core`, `protocol`)
@@ -51,6 +53,7 @@
 ### Task 1: CI push trigger, app job name, build cache (#28)
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Restrict the push trigger to `main`**
@@ -60,6 +63,7 @@
 - [ ] **Step 2: Name the job and cache DerivedData**
 
 Job `app` gets `name: App build`. Before the `xcodegen` step, add `actions/cache@v4` with:
+
 - `path: .build/app`
 - `key: app-${{ runner.os }}-${{ hashFiles('App/**', 'Sources/**', 'Package.swift') }}`
 - `restore-keys: app-${{ runner.os }}-`
@@ -88,11 +92,13 @@ Compare the `App build` duration of the first PR run (cold cache) and a re-run (
 ### Task 2: Ignore messages of dropped connections, accept `hello` only once (#8, #9)
 
 **Files:**
+
 - Modify: `Sources/PokerNet/TableHost.swift` (`receive`, `welcome`)
 - Modify: `docs/PROTOCOL.md:53`
 - Test: `Tests/PokerNetTests/HostLobbyTests.swift`
 
 **Interfaces:**
+
 - Produces: a second `hello` on a bound connection is answered with `.error(WireErrorCode.malformed.rawValue)`, envelope id = the hello's id; the connection stays open (same as other `malformed` cases, PROTOCOL.md table line 142).
 
 - [ ] **Step 1: Write the failing tests**
@@ -148,6 +154,7 @@ git commit -m "fix(net): ignore messages of dropped connections, accept hello on
 ### Task 3: Listener lifecycle and save order in TableHost (#10, #13, #14)
 
 **Files:**
+
 - Modify: `Sources/PokerNet/TableHost.swift` (`start(port:)`, `accept`, `handle`)
 - Test: `Tests/PokerNetTests/HostCommandTests.swift`
 
@@ -187,6 +194,7 @@ git commit -m "fix(net): cancel a replaced listener, refuse connections after st
 ### Task 4: Released TableClient closes its connection (#12)
 
 **Files:**
+
 - Modify: `Sources/PokerNet/TableClient.swift`
 - Test: `Tests/PokerNetTests/ClientTests.swift`
 
@@ -226,12 +234,14 @@ git commit -m "fix(net): close the connection when a TableClient is released"
 ### Task 5: Corrupt snapshot without host token does not crash (#16)
 
 **Files:**
+
 - Modify: `Sources/PokerNet/HostSnapshot.swift:33-35`
 - Modify: `Sources/PokerSession/SaveFile.swift` (`isResumable`)
 - Modify: `Sources/PokerSession/TableSession.swift` (`host`)
 - Test: `Tests/PokerSessionTests/SessionTests.swift`
 
 **Interfaces:**
+
 - Produces: `public var hostToken: String?` on `HostSnapshot`; `TableSession.host` throws `CocoaError(.fileReadCorruptFile)` when it is nil.
 
 - [ ] **Step 1: Write the failing test**
@@ -271,6 +281,7 @@ git commit -m "fix(net): treat a snapshot without host token as corrupt instead 
 ### Task 6: Tests for the 1 MiB line limit (#18)
 
 **Files:**
+
 - Test: `Tests/PokerNetTests/ChannelTests.swift`
 
 - [ ] **Step 1: Write the tests**
@@ -346,6 +357,7 @@ No unit tests for SwiftUI views; each task ends with the app build check and one
 ### Task 8: ActionBar copy and stale all-in confirmation (#24, #31)
 
 **Files:**
+
 - Modify: `App/Sources/ActionBar.swift`
 
 - [ ] **Step 1: Implement**
@@ -360,6 +372,7 @@ No unit tests for SwiftUI views; each task ends with the app build check and one
 ### Task 9: Showdown selection, lobby dealer, turn haptic (#25, #32, #37)
 
 **Files:**
+
 - Modify: `App/Sources/ShowdownView.swift:36`
 - Modify: `App/Sources/LobbyView.swift`
 - Modify: `App/Sources/TableScreen.swift:40`
@@ -377,6 +390,7 @@ No unit tests for SwiftUI views; each task ends with the app build check and one
 ### Task 10: Host menu cleanup (#27)
 
 **Files:**
+
 - Modify: `App/Sources/HostMenu.swift`
 - Modify: `App/Sources/StartView.swift`
 
@@ -393,6 +407,7 @@ No unit tests for SwiftUI views; each task ends with the app build check and one
 ### Task 11: Cancel the event task on leave (#29)
 
 **Files:**
+
 - Modify: `Sources/PokerSession/TableSession.swift` (`start`, `leave`)
 
 - [ ] **Step 1: Implement**
@@ -411,6 +426,7 @@ PR 3 wrap-up: whole-branch review (fable high), PR with `Closes #24, #25, #27, #
 ### Task 12: PokerSession test gaps (#22)
 
 **Files:**
+
 - Test: `Tests/PokerSessionTests/DisplayTests.swift`
 - Test: `Tests/PokerSessionTests/SessionTests.swift`
 
@@ -496,6 +512,7 @@ PR 4 wrap-up: whole-branch review (fable high), PR with `Closes #22`.
 ### Task 13: Failed table start keeps the old save, table name limit (#30)
 
 **Files:**
+
 - Modify: `Sources/PokerSession/TableSession.swift` (`host`)
 - Modify: `App/Sources/StartView.swift` (`CreateTableSheet`)
 - Test: `Tests/PokerSessionTests/SessionTests.swift`
@@ -536,6 +553,7 @@ Run: `swift test --filter PokerSessionTests`, then the app build check. Expected
 ### Task 14: Confirm before replacing a resumable game (#21)
 
 **Files:**
+
 - Modify: `App/Sources/StartView.swift`
 
 - [ ] **Step 1: Implement**

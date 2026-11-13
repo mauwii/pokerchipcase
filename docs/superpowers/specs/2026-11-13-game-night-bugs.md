@@ -22,7 +22,7 @@ Turning off peer-to-peer, forcing IPv4 or requiring Wi-Fi does not change the `.
 
 The host sees one extra TCP connection per connect attempt. It fails before TLS and is dropped.
 
-#36 (a TLS error during host suspension counts as a wrong code) stays open. This change widens what counts as a handshake failure only for errors before `.ready` that are not "unreachable".
+Issue #36 (a TLS error during host suspension counts as a wrong code) stays open. This change widens what counts as a handshake failure only for errors before `.ready` that are not "unreachable".
 
 ## #41 Save with a host token but no host seat
 

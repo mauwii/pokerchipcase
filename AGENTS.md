@@ -4,8 +4,9 @@ iOS app that replaces the poker chip case for a home Texas Hold'em game, play mo
 
 ## Commands
 
-Run both from the repo root before opening a PR; CI runs the same two.
+Run these from the repo root before opening a PR; CI runs the same three.
 
+- Lint (`brew install pre-commit`): `pre-commit run --all-files`. CI runs it in the `lint` job.
 - Package tests (macOS, no device needed): `swift test`
 - App build:
 
