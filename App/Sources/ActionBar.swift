@@ -28,10 +28,13 @@ struct ActionBar: View {
                         in: Double(lo)...Double(hi), step: Double(max(1, state.currentLevel.smallBlind)))
                     HStack {
                         ForEach(quickPicks, id: \.kind) { pick in
-                            Button("\(label(pick.kind)) \(pick.raiseTo)") { raiseTo = pick.raiseTo }
-                                .font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
-                                .frame(maxWidth: .infinity).padding(.vertical, 6)
-                                .overlay(Capsule().strokeBorder(theme.muted))
+                            Button { raiseTo = pick.raiseTo } label: {
+                                Text("\(label(pick.kind)) \(pick.raiseTo)")
+                                    .font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 6)
+                                    .overlay(Capsule().strokeBorder(theme.muted))
+                                    .contentShape(Capsule())
+                            }
                         }
                     }
                 }

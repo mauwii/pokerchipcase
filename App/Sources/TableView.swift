@@ -43,6 +43,11 @@ struct TableView: View {
         .padding(.horizontal)
         .foregroundStyle(theme.text)
         .background(theme.background.ignoresSafeArea())
+        .tint(theme.accent)
+        // The table is dark in both themes, so the bar and status bar need light content.
+        .toolbarBackground(theme.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .sensoryFeedback(.success, trigger: iWon) { _, won in won }
         .onChange(of: state.pots, initial: true) {
             winners = Array(repeating: [], count: state.pots.count)

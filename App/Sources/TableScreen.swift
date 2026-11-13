@@ -37,6 +37,8 @@ struct TableScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle(session.tableName)
+            // Inline, so the oval table gets the height on small iPhones.
+            .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top) { banner }
             // Here, not in ActionBar: that is re-inserted every hand with the trigger already set.
             // nil while waiting, the street on my turn, so a new street during my turn fires too.

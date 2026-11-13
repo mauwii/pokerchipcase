@@ -5,7 +5,7 @@ import SwiftUI
 enum SeatMark { case normal, selectable, selected, dimmed }
 
 private let seatWidth: CGFloat = 70
-private let seatHeight: CGFloat = 34
+private let seatHeight: CGFloat = 38
 
 /// Index 0 sits at the bottom center, the others follow clockwise on screen.
 /// The radii leave room for a seat label at every point, so labels never leave `size`.
@@ -50,16 +50,13 @@ struct OvalTable: View {
                             insertion: .opacity,
                             removal: .offset(x: size.width / 2 - at.x, y: size.height / 2 - at.y).combined(with: .opacity)))
                     }
-                    if seat.id == state.dealerID {
-                        // A quarter step clockwise from the seat, so it clears the bet and the label.
-                        let beside = seatPoint(index: i * 4 + 1, count: seats.count * 4, in: size)
-                        dealerDisk.position(toward(beside, 0.75, in: size))
-                    }
                     seatLabel(seat).position(point)
                 }
             }
             .animation(.easeInOut(duration: 0.4), value: state.version)
         }
+        // The layout constants assume at most this size; larger text would overlap the seats.
+        .dynamicTypeSize(...DynamicTypeSize.large)
     }
 
     private func seatLabel(_ seat: Seat) -> some View {
@@ -67,7 +64,11 @@ struct OvalTable: View {
         let acting = state.toActIndex.map { state.seats[$0].id } == seat.id
         let delta = seat.stack - seat.stackAtHandStart
         return VStack(spacing: 1) {
-            Text(seat.name).fontWeight(seat.id == viewer ? .heavy : .regular).lineLimit(1)
+            HStack(spacing: 3) {
+                // Inside the label, so it can never collide with a neighbour, a bet or the pot.
+                if seat.id == state.dealerID { dealerDisk }
+                Text(seat.name).fontWeight(seat.id == viewer ? .heavy : .regular).lineLimit(1)
+            }
             HStack(spacing: 3) {
                 Text("\(seat.stack)").monospacedDigit().bold().contentTransition(.numericText())
                 if seat.allIn { tag("All-in") }
@@ -96,6 +97,9 @@ struct OvalTable: View {
         .contentShape(.rect)
         .onTapGesture { if mark != .dimmed { onTapSeat?(seat.id) } }
         .allowsHitTesting(onTapSeat != nil)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(onTapSeat != nil && mark != .dimmed ? .isButton : [])
+        .accessibilityAddTraits(mark == .selected ? .isSelected : [])
     }
 
     private var pot: some View {
@@ -119,8 +123,9 @@ struct OvalTable: View {
     }
 
     private var dealerDisk: some View {
-        Text("D").font(.system(size: 9, weight: .black)).foregroundStyle(.black)
-            .frame(width: 15, height: 15).background(.white, in: .circle)
+        Text("D").font(.system(size: 8, weight: .black)).foregroundStyle(.black)
+            .frame(width: 12, height: 12).background(.white, in: .circle)
+            .accessibilityLabel("Dealer")
     }
 
     private func tag(_ text: String) -> some View {
