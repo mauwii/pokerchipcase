@@ -144,7 +144,9 @@ public actor TableClient {
             case .removed: fail(.removed)
             case .tableClosed: fail(.tableClosed)
             case .replaced: fail(.replaced)
-            default: break
+            // An error answering `hello` that is not one of the above: a host that cannot read this client
+            // (e.g. an older protocol answering `malformed`). Waiting would hang at "Connecting…".
+            default: if !connected { fail(.versionMismatch) }
             }
         }
     }

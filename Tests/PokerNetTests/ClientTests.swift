@@ -227,6 +227,21 @@ struct ClientTests {
         await ben.disconnect(); await ben2.disconnect(); await host.stop()
     }
 
+    /// A host from before a wire change answers `hello` with `malformed` and keeps the connection open (#53).
+    @Test func errorBeforeWelcomeFailsWithoutRetry() async throws {
+        let fake = try FakeHost { id, message in
+            guard case .hello = message else { return ([], false) }
+            return ([try! Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
+        }
+        let port = try await fake.start()
+        let (ben, events) = await client(port)
+        _ = try await events.first { $0 == .failed(.versionMismatch) }
+        #expect(await events.all == [.failed(.versionMismatch)])
+        #expect(await fake.hellos == 1)
+        await ben.disconnect()
+        await fake.dropAll()
+    }
+
     @Test func removedPlayerFails() async throws {
         let (host, _, anna, ben, benEvents) = try await table()
         let benID = try await benEvents.first { $0.welcome != nil }.welcome!.player

@@ -168,6 +168,7 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 - Enable TCP keepalive (the iOS app uses 2 s idle, 2 s interval, 3 probes) so a vanished host is noticed within seconds.
 - If no answer to a `command` arrives within 10 s, drop the connection and reconnect with the token.
 - After `versionMismatch`, `tableFull`, `gameInProgress`, `removed`, `tableClosed` or `replaced`, do not reconnect automatically.
+- Any other `error` before `welcome` answers your `hello`, so the host cannot serve this client (for example an older host that answers `malformed` to a newer `hello`). Stop and treat it like `versionMismatch` instead of waiting for a `welcome` that never comes.
 - Treat a connection that fails before the TLS handshake completes as a wrong code (do not retry), unless the host was unreachable (connection refused, timeout, no route, DNS). A connection that drops after the handshake is retried.
 - Resolve the Bonjour service to an address before the TLS connection. Apple's Network.framework retries a failed handshake on a service endpoint forever instead of reporting it, so a wrong code would never fail. The iOS app resolves with a plain TCP connection, which the host sees as one extra connection that ends before TLS.
 - The cipher suite is plain TLS-PSK, which not every TLS stack offers by default (on Android, check the platform stack; BouncyCastle `bctls` supports it).
