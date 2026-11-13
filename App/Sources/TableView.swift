@@ -5,6 +5,7 @@ import SwiftUI
 struct TableView: View {
     let session: TableSession
     let state: GameState
+    @Environment(\.theme) private var theme
 
     private var myStack: Chips { session.me.flatMap { state.seat($0)?.stack } ?? 0 }
     private var nextLevel: BlindLevel? {
@@ -12,34 +13,32 @@ struct TableView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             header
             if session.me == state.dealerID, let hint = state.dealerHint {
                 Text(hint.message).font(.headline).frame(maxWidth: .infinity).padding(8)
-                    .background(.tint.opacity(0.2), in: .rect(cornerRadius: 8))
+                    .background(theme.accent.opacity(0.25), in: .rect(cornerRadius: 8))
             }
-            List(state.seats.indices, id: \.self) { i in
-                seatRow(state.seats[i], acting: state.toActIndex == i)
-                    .listRowBackground(state.toActIndex == i ? Color.accentColor.opacity(0.2) : nil)
-            }
-            .listStyle(.plain)
-            Text("Pot \(state.potTotal)").font(.title2.bold())
-            VStack {
-                Text("Your stack").font(.subheadline).foregroundStyle(.secondary)
-                Text("\(myStack)").font(.system(size: 44, weight: .bold, design: .rounded))
+            OvalTable(state: state, viewer: session.me)
+            VStack(spacing: 0) {
+                Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
+                Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
                 if let legal = session.legalActions, legal.callAmount > 0 {
-                    Text("To call \(legal.callAmount)").foregroundStyle(.secondary)
+                    Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
                 }
             }
             bottom
         }
         .padding(.horizontal)
+        .foregroundStyle(theme.text)
+        .background(theme.background.ignoresSafeArea())
     }
 
     private var header: some View {
         VStack(spacing: 2) {
             let level = state.currentLevel
             Text("Level \(state.clock.levelIndex + 1) · \(level.smallBlind)/\(level.bigBlind)").font(.headline)
+                .foregroundStyle(theme.accent)
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 if state.clock.isPaused {
                     Text("Paused")
@@ -50,35 +49,9 @@ struct TableView: View {
                 }
             }
             if let next = nextLevel {
-                Text("Next: \(next.smallBlind)/\(next.bigBlind)").font(.caption).foregroundStyle(.secondary)
+                Text("Next: \(next.smallBlind)/\(next.bigBlind)").font(.caption).foregroundStyle(theme.muted)
             }
         }
-    }
-
-    private func seatRow(_ seat: Seat, acting: Bool) -> some View {
-        HStack {
-            Text(seat.name + (seat.id == session.me ? " (you)" : "")).fontWeight(acting ? .bold : .regular)
-            if seat.id == state.dealerID { badge("D") }
-            if seat.allIn { badge("All-in") }
-            Spacer()
-            if let rank = seat.eliminatedRank {
-                Text("Out · #\(rank)").foregroundStyle(.secondary)
-            } else {
-                if seat.folded { Text("folded") }
-                if seat.roundBet > 0 { Text("bet \(seat.roundBet)") }
-                if state.phase == .handComplete, seat.stack != seat.stackAtHandStart {
-                    let delta = seat.stack - seat.stackAtHandStart
-                    Text(delta > 0 ? "+\(delta)" : "−\(-delta)").foregroundStyle(delta > 0 ? .green : .red)
-                }
-                Text("\(seat.stack)").monospacedDigit().bold()
-            }
-        }
-        .opacity(seat.folded || seat.isEliminated ? 0.5 : 1)
-    }
-
-    private func badge(_ text: String) -> some View {
-        Text(text).font(.caption.bold()).padding(.horizontal, 6).padding(.vertical, 2)
-            .background(.tint.opacity(0.25), in: .capsule)
     }
 
     @ViewBuilder private var bottom: some View {
