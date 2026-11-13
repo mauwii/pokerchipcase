@@ -17,9 +17,9 @@ Run both from the repo root before opening a PR; CI runs the same two.
 
 ## Layout
 
-- `Sources/PokerCore`: game rules, pots, commands, wire types. No dependencies.
-- `Sources/PokerNet`: networking, depends on `PokerCore`.
-- `Sources/PokerSession`: session state and save file, depends on `PokerCore` and `PokerNet`.
+- `Sources/PokerCore`: game rules, pots, commands, wire types.
+- `Sources/PokerNet`: networking.
+- `Sources/PokerSession`: session state and save file.
 - `App/Sources`: SwiftUI app. It has no unit tests and is tested manually in simulators.
 - `Tests/<Target>Tests`: Swift Testing, one test target per library.
 - `docs/PROTOCOL.md`: the wire protocol. Update it in the same PR as any wire-format change.
@@ -28,7 +28,7 @@ Run both from the repo root before opening a PR; CI runs the same two.
 
 - Edit `App/project.yml` for project settings. `App/PokerChipCase.xcodeproj` and `App/Info.plist` are generated and gitignored.
 - `App/Config/Local.xcconfig` holds per-developer signing settings and stays local.
-- Swift 6 language mode with strict concurrency.
+- Keep Swift 6 language mode. Fix concurrency errors instead of silencing them.
 - Write code, comments, docs, and commits in English.
 - Commits follow Conventional Commits with an optional scope, e.g. `fix(app): …`, `refactor: …`, `docs: …`.
 
