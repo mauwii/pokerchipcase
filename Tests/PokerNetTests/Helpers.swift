@@ -144,9 +144,10 @@ func testSnapshot() -> HostSnapshot {
 func startHost(
     _ snapshot: HostSnapshot = testSnapshot(),
     port: NWEndpoint.Port = .any,
+    helloTimeout: Duration = .seconds(10),
     onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }
 ) async throws -> (TableHost, NWEndpoint.Port) {
-    let host = TableHost(snapshot: snapshot, onChange: onChange)
+    let host = TableHost(snapshot: snapshot, helloTimeout: helloTimeout, onChange: onChange)
     return (host, try await host.start(port: port))
 }
 

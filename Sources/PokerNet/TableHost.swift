@@ -15,10 +15,14 @@ public actor TableHost {
     private var port: NWEndpoint.Port?
     private var channels: [UUID: MessageChannel] = [:]
     private var bound: [UUID: PlayerID] = [:]
+    private let helloTimeout: Duration
 
     /// `onChange` receives every new snapshot; persist it to resume after a crash.
-    public init(snapshot: HostSnapshot, onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) {
+    /// `helloTimeout`: a connection that has not finished TLS and `hello` by then is closed.
+    public init(snapshot: HostSnapshot, helloTimeout: Duration = .seconds(10),
+                onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) {
         self.snapshot = snapshot
+        self.helloTimeout = helloTimeout
         self.onChange = onChange
     }
 
@@ -95,7 +99,17 @@ public actor TableHost {
             } catch {}
             await self?.drop(id)
         }
+        Task { [weak self, helloTimeout] in
+            try? await Task.sleep(for: helloTimeout)
+            await self?.dropIfUnbound(id)
+        }
         channel.start()
+    }
+
+    private func dropIfUnbound(_ id: UUID) {
+        guard bound[id] == nil, let channel = channels[id] else { return }
+        channel.cancel()
+        drop(id)
     }
 
     private func drop(_ id: UUID) {
