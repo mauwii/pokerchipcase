@@ -11,37 +11,53 @@ public actor TableHost {
     private let onChange: @Sendable (HostSnapshot) -> Void
     private let queue = DispatchQueue(label: "pokernet.host")
     private var listener: NWListener?
+    /// Identifies `listener` in its callbacks. Not ObjectIdentifier: a new listener can reuse the old one's address.
+    private var listenerID = 0
+    /// Finishes once `listener` is cancelled and has let go of its port.
+    private var listenerGone: AsyncStream<Never>?
     /// Port of the last successful start; nil after `stop()`.
     private var port: NWEndpoint.Port?
     private var channels: [UUID: MessageChannel] = [:]
     private var bound: [UUID: PlayerID] = [:]
+    private let helloTimeout: Duration
 
     /// `onChange` receives every new snapshot; persist it to resume after a crash.
-    public init(snapshot: HostSnapshot, onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) {
+    /// `helloTimeout`: a connection that has not finished TLS and `hello` by then is closed.
+    public init(snapshot: HostSnapshot, helloTimeout: Duration = .seconds(10),
+                onChange: @escaping @Sendable (HostSnapshot) -> Void = { _ in }) {
         self.snapshot = snapshot
+        self.helloTimeout = helloTimeout
         self.onChange = onChange
     }
 
     public var connectedPlayers: Set<PlayerID> { Set(bound.values) }
 
-    public var isListening: Bool { listener != nil }
+    public var isListening: Bool { listener?.state == .ready }
 
-    /// Starts listening and returns the bound port.
+    /// Starts listening (stopping a previous listener first) and returns the bound port.
     public func start(port: NWEndpoint.Port = .any) async throws -> NWEndpoint.Port {
-        listener?.cancel()
+        await cancelListener()
         let listener = try NWListener(using: PSK.parameters(code: snapshot.code), on: port)
         listener.service = NWListener.Service(name: snapshot.tableName, type: Wire.serviceType)
+        listenerID += 1
+        let id = listenerID
         listener.newConnectionHandler = { [weak self] connection in
-            Task { await self?.accept(connection) }
+            Task { await self?.accept(connection, from: id) }
         }
-        let id = ObjectIdentifier(listener)
+        let (gone, isGone) = AsyncStream<Never>.makeStream()
+        // Started before it is stored, so a concurrent `start` that cancels it always gets the callback.
+        let ready = listener.startReporting(queue: queue) { [weak self] in
+            isGone.finish()
+            Task { await self?.listenerStopped(id) }
+        }
         self.listener = listener
+        listenerGone = gone
         do {
-            let bound = try await listener.startAndWaitUntilReady(queue: queue) { [weak self] in
-                Task { await self?.listenerStopped(id) }
+            for try await bound in ready {
+                self.port = bound
+                return bound
             }
-            self.port = bound
-            return bound
+            throw NWError.posix(.ECANCELED)
         } catch {
             listenerStopped(id)
             throw error
@@ -49,9 +65,13 @@ public actor TableHost {
     }
 
     /// Restarts the listener on its previous port if it has stopped (e.g. after the app was suspended).
+    /// Checks the listener's own state: the `listenerStopped` callback can land after the app is active again (#46).
     public func ensureListening() async throws {
-        guard listener == nil, let port else { return }
-        _ = try await start(port: port)
+        guard let port else { return }
+        switch listener?.state {
+        case .setup?, .ready?: return
+        default: _ = try await start(port: port)
+        }
     }
 
     /// Ends the table: every connection gets a final `tableClosed`, then the host stops listening.
@@ -65,6 +85,7 @@ public actor TableHost {
         port = nil
         listener?.cancel()
         listener = nil
+        listenerGone = nil
         disconnectAll()
     }
 
@@ -74,16 +95,31 @@ public actor TableHost {
         bound = [:]
     }
 
-    func simulateListenerFailure() {
+    /// `callbackLost`: the listener stops, but `listenerStopped` ignores it, like a callback that lands late.
+    func simulateListenerFailure(callbackLost: Bool = false) {
+        if callbackLost { listenerID += 1 }
         listener?.cancel()
     }
 
-    private func listenerStopped(_ id: ObjectIdentifier) {
-        if let listener, ObjectIdentifier(listener) == id { self.listener = nil }
+    /// Cancels the listener and waits until it is gone, so a new one can bind the same port.
+    private func cancelListener() async {
+        guard let old = listener else { return }
+        let gone = listenerGone
+        listener = nil
+        listenerGone = nil
+        old.cancel()
+        if let gone { for await _ in gone {} }
     }
 
-    private func accept(_ connection: NWConnection) {
-        guard listener != nil else { return connection.cancel() }
+    private func listenerStopped(_ id: Int) {
+        guard id == listenerID else { return }
+        listener = nil
+        listenerGone = nil
+    }
+
+    /// Only the current listener's connections; a late one from a replaced listener is turned away.
+    private func accept(_ connection: NWConnection, from id: Int) {
+        guard listener != nil, id == listenerID else { return connection.cancel() }
         let id = UUID()
         let channel = MessageChannel(connection: connection)
         channels[id] = channel
@@ -95,7 +131,17 @@ public actor TableHost {
             } catch {}
             await self?.drop(id)
         }
+        Task { [weak self, helloTimeout] in
+            try? await Task.sleep(for: helloTimeout)
+            await self?.dropIfUnbound(id)
+        }
         channel.start()
+    }
+
+    private func dropIfUnbound(_ id: UUID) {
+        guard bound[id] == nil, let channel = channels[id] else { return }
+        channel.cancel()
+        drop(id)
     }
 
     private func drop(_ id: UUID) {
@@ -164,11 +210,9 @@ public actor TableHost {
         if let t = hello.token, let p = snapshot.tokens[t] {
             player = p
             token = t
-            // The newest connection for a player wins; the old one is probably dead.
-            for (other, q) in bound where q == p && other != id {
-                channels[other]?.cancel()
-                drop(other)
-            }
+            // The newest connection for a player wins. Usually the old one is dead; if it is another
+            // device sharing the token, `replaced` stops it from taking the seat back.
+            for (other, q) in bound where q == p && other != id { reject(.replaced, other, replyTo: nil) }
         } else {
             player = UUID().uuidString
             do {
@@ -205,32 +249,35 @@ public actor TableHost {
 }
 
 extension NWListener {
-    /// Starts the listener and waits until it is ready. `onStopped` fires if it fails or is cancelled later.
-    func startAndWaitUntilReady(
-        queue: DispatchQueue, onStopped: @escaping @Sendable () -> Void = {}
-    ) async throws -> NWEndpoint.Port {
+    /// Starts the listener. The stream yields the port once ready and finishes, or throws if the listener
+    /// fails first. `onCancelled` fires once the listener is cancelled; a failed one cancels itself.
+    func startReporting(
+        queue: DispatchQueue, onCancelled: @escaping @Sendable () -> Void = {}
+    ) -> AsyncThrowingStream<NWEndpoint.Port, Error> {
         let (ready, continuation) = AsyncThrowingStream<NWEndpoint.Port, Error>.makeStream()
         stateUpdateHandler = { [weak self] state in
             switch state {
             case .ready:
                 if let port = self?.port { continuation.yield(port) }
                 continuation.finish()
-            case let .waiting(error):
-                // E.g. the port is taken; treat as failure instead of hanging.
+            case let .waiting(error), let .failed(error):
+                // Waiting: e.g. the port is taken; treat as failure instead of hanging.
                 continuation.finish(throwing: error)
                 self?.cancel()
-            case let .failed(error):
-                continuation.finish(throwing: error)
-                onStopped()
             case .cancelled:
                 continuation.finish()
-                onStopped()
+                onCancelled()
             default:
                 break
             }
         }
         start(queue: queue)
-        for try await port in ready { return port }
+        return ready
+    }
+
+    /// Starts the listener and waits until it is ready.
+    func startAndWaitUntilReady(queue: DispatchQueue) async throws -> NWEndpoint.Port {
+        for try await port in startReporting(queue: queue) { return port }
         throw NWError.posix(.ECANCELED)
     }
 }

@@ -68,9 +68,25 @@ struct HostLobbyTests {
         let second = try await RawClient.connect(port)
         second.send(hello("Ben", token: w.token))
         _ = try await second.welcome()
+        #expect(try await first.error() == WireErrorCode.replaced.rawValue)
         try await first.waitForClose()
         #expect(await host.connectedPlayers.contains(w.player))
         #expect(try await second.state().seats.count == 2)
+        await host.stop()
+    }
+
+    @Test func connectionWithoutHelloIsClosedAfterTimeout() async throws {
+        let (host, port) = try await startHost(helloTimeout: .milliseconds(300))
+        let ben = try await RawClient.connect(port)
+        ben.send(hello("Ben"))
+        let w = try await ben.welcome()
+        let silent = try await RawClient.connect(port)
+        try await silent.waitForClose()
+        // A bound connection outlives the timeout.
+        let id = UUID()
+        ben.send(hello("Ben"), id: id)
+        #expect(try await ben.nextEnvelope { $0.error != nil }.id == id)
+        #expect(await host.connectedPlayers == [w.player])
         await host.stop()
     }
 

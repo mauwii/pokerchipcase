@@ -214,6 +214,33 @@ struct ClientTests {
         await fake.dropAll()
     }
 
+    @Test func secondDeviceWithTheSameTokenEndsTheFirst() async throws {
+        let (host, port) = try await startHost()
+        let (ben, events) = await client(port)
+        let w = try await events.first { $0.welcome != nil }.welcome!
+        let (ben2, events2) = await client(port, token: w.token)
+        _ = try await events2.first { $0.welcome?.player == w.player }
+        _ = try await events.first { $0 == .failed(.replaced) }
+        #expect(await events.all.compactMap(\.welcome).count == 1)
+        #expect(await host.connectedPlayers == [w.player])
+        #expect(!(await events2.all.contains(.connectionLost)))
+        await ben.disconnect(); await ben2.disconnect(); await host.stop()
+    }
+
+    /// A host from before a wire change answers `hello` with `malformed` and keeps the connection open (#53).
+    @Test func errorBeforeWelcomeFailsWithoutRetry() async throws {
+        let fake = try FakeHost { id, message in
+            guard case .hello = message else { return ([], false) }
+            return ([try! Wire.encode(ServerMessage.error(WireErrorCode.malformed.rawValue), id: id)], false)
+        }
+        let port = try await fake.start()
+        let (ben, events) = await client(port)
+        #expect(try await events.waitForEnd() == nil)
+        #expect(await events.all == [.failed(.versionMismatch)])
+        await ben.disconnect()
+        await fake.dropAll()
+    }
+
     @Test func removedPlayerFails() async throws {
         let (host, _, anna, ben, benEvents) = try await table()
         let benID = try await benEvents.first { $0.welcome != nil }.welcome!.player
@@ -263,6 +290,13 @@ struct ClientTests {
         try await Task.sleep(for: .milliseconds(500))
         #expect(await events.all.compactMap(\.welcome).count == 1)
         #expect(!(await events.all.contains(.connectionLost)))
+    }
+
+    @Test func eventsFinishWhenTheClientIsReleased() async throws {
+        var ben: TableClient? = TableClient(endpoint: loopback(1), code: code4711, name: "Ben")
+        let events = EventRecorder(ben!.events)
+        ben = nil
+        #expect(try await events.waitForEnd() == nil)
     }
 
     @Test func releasedClientClosesItsConnection() async throws {

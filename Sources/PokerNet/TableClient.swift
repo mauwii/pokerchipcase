@@ -13,6 +13,8 @@ public enum ClientEvent: Equatable, Sendable {
 
 public enum ClientFailure: Equatable, Sendable {
     case wrongCode, versionMismatch, tableFull, gameInProgress, removed, tableClosed
+    /// Another connection took this seat with the same token (e.g. the player's second device).
+    case replaced
 }
 
 public enum ClientError: Error, Equatable {
@@ -141,7 +143,10 @@ public actor TableClient {
             case .gameInProgress: fail(.gameInProgress)
             case .removed: fail(.removed)
             case .tableClosed: fail(.tableClosed)
-            default: break
+            case .replaced: fail(.replaced)
+            // An error answering `hello` that is not one of the above: a host that cannot read this client
+            // (e.g. an older protocol answering `malformed`). Waiting would hang at "Connecting…".
+            default: if !connected { fail(.versionMismatch) }
             }
         }
     }

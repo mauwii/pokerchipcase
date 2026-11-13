@@ -11,7 +11,8 @@ public enum BrowserStatus: Equatable, Sendable {
     case browsing, localNetworkDenied, failed
 }
 
-/// Finds tables nearby via Bonjour (Wi-Fi and peer-to-peer).
+/// Finds tables nearby via Bonjour (Wi-Fi and peer-to-peer). One-shot: after `stop()` or a failure,
+/// create a new browser.
 /// ponytail: @unchecked Sendable, NWBrowser is confined to `queue`
 public final class TableBrowser: @unchecked Sendable {
     /// The current list of tables, delivered on every change.
@@ -33,19 +34,28 @@ public final class TableBrowser: @unchecked Sendable {
 
     public func start() {
         browser.browseResultsChangedHandler = { [continuation] results, _ in
-            var seen = Set<String>()
-            let tables = results.compactMap { result -> DiscoveredTable? in
-                // The same table shows up once per interface; keep the first.
-                guard case let .service(name, _, _, _) = result.endpoint, seen.insert(name).inserted else { return nil }
-                return DiscoveredTable(name: name, endpoint: result.endpoint)
-            }
-            continuation.yield(tables.sorted { $0.name < $1.name })
+            continuation.yield(Self.unique(results.compactMap { result in
+                guard case let .service(name, _, _, _) = result.endpoint else { return nil }
+                let interface = result.interfaces.first
+                return (DiscoveredTable(name: name, endpoint: result.endpoint), interface?.type, interface?.name ?? "")
+            }))
         }
         browser.stateUpdateHandler = { [continuation, statusContinuation] state in
             if let status = Self.status(for: state) { statusContinuation.yield(status) }
             if case .failed = state { continuation.finish() }
         }
         browser.start(queue: queue)
+    }
+
+    /// The same table shows up once per interface; keep the one on the most preferred interface
+    /// (Wi-Fi, wired, other such as AWDL, then the rest), ties broken by interface name. Sorted by name.
+    static func unique(_ found: [(table: DiscoveredTable, type: NWInterface.InterfaceType?, interface: String)]) -> [DiscoveredTable] {
+        let preference: [NWInterface.InterfaceType?] = [.wifi, .wiredEthernet, .other]
+        let rank = { (type: NWInterface.InterfaceType?) in preference.firstIndex(of: type) ?? preference.count }
+        let best = Dictionary(found.map { ($0.table.name, $0) }) { a, b in
+            (rank(a.type), a.interface) <= (rank(b.type), b.interface) ? a : b
+        }
+        return best.values.map(\.table).sorted { $0.name < $1.name }
     }
 
     static func status(for state: NWBrowser.State) -> BrowserStatus? {

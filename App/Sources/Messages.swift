@@ -11,6 +11,7 @@ extension ClientFailure {
         case .gameInProgress: "The tournament has already started"
         case .removed: "You were removed from the table"
         case .tableClosed: "The host ended the table"
+        case .replaced: "You joined this table from another device"
         }
     }
 }
