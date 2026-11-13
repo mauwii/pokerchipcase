@@ -57,11 +57,13 @@ To try it on one simulator, launch the app with the argument `-debugTable`: it c
 
 | Path | Contents |
 | --- | --- |
-| `Sources/PokerCore` | Game rules, pots, commands, wire types. No dependencies. |
-| `Sources/PokerNet` | Discovery, encrypted connections, host and client. |
-| `Sources/PokerSession` | Session state and the save file. |
+| `Sources/PokerCore` | Game rules, pots, commands, wire types. Foundation only. |
+| `Sources/PokerNet` | Discovery, encrypted connections, host and client. Depends on PokerCore. |
+| `Sources/PokerSession` | Session state and the save file. Depends on PokerCore and PokerNet. |
 | `App/Sources` | The SwiftUI app. |
 | `Tests` | Swift Testing, one target per library. |
+
+The package has no third-party dependencies: besides its own modules it uses only Apple frameworks (Foundation, Network, CryptoKit, Observation, SwiftUI). So there is no `Package.resolved` to lock.
 
 ## Protocol
 
