@@ -43,7 +43,12 @@ struct OvalTable: View {
                     let point = seatPoint(index: i, count: seats.count, in: size)
                     if seat.roundBet > 0 {
                         // Halfway: further out, a bet next to a side seat overlaps its label.
-                        bet(seat.roundBet).position(toward(point, 0.5, in: size))
+                        let at = toward(point, 0.5, in: size)
+                        // When the betting round ends, the bet slides into the pot.
+                        // ponytail: no pot-to-winner animation yet; add it once the rest feels right.
+                        bet(seat.roundBet).position(at).transition(.asymmetric(
+                            insertion: .opacity,
+                            removal: .offset(x: size.width / 2 - at.x, y: size.height / 2 - at.y).combined(with: .opacity)))
                     }
                     if seat.id == state.dealerID {
                         // A quarter step clockwise from the seat, so it clears the bet and the label.
@@ -53,6 +58,7 @@ struct OvalTable: View {
                     seatLabel(seat).position(point)
                 }
             }
+            .animation(.easeInOut(duration: 0.4), value: state.version)
         }
     }
 
@@ -63,7 +69,7 @@ struct OvalTable: View {
         return VStack(spacing: 1) {
             Text(seat.name).fontWeight(seat.id == viewer ? .heavy : .regular).lineLimit(1)
             HStack(spacing: 3) {
-                Text("\(seat.stack)").monospacedDigit().bold()
+                Text("\(seat.stack)").monospacedDigit().bold().contentTransition(.numericText())
                 if seat.allIn { tag("All-in") }
                 if state.phase == .handComplete, delta != 0 {
                     Text(delta > 0 ? "+\(delta)" : "−\(-delta)").foregroundStyle(delta > 0 ? .green : .red).bold()
@@ -77,9 +83,14 @@ struct OvalTable: View {
         .frame(maxWidth: seatWidth)
         .background(mark == .selected ? theme.accent.opacity(0.35) : theme.seat, in: .rect(cornerRadius: 8))
         .overlay {
-            RoundedRectangle(cornerRadius: 8).strokeBorder(
-                acting || mark == .selected ? theme.accent : mark == .selectable ? theme.muted : .clear,
-                lineWidth: acting || mark == .selected ? 2 : 1)
+            if acting {
+                RoundedRectangle(cornerRadius: 8).strokeBorder(theme.accent, lineWidth: 2)
+                    .phaseAnimator([1.0, 0.4]) { ring, opacity in ring.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.8) }
+            } else {
+                RoundedRectangle(cornerRadius: 8).strokeBorder(
+                    mark == .selected ? theme.accent : mark == .selectable ? theme.muted : .clear,
+                    lineWidth: mark == .selected ? 2 : 1)
+            }
         }
         .opacity(mark == .dimmed ? 0.3 : seat.folded ? 0.4 : 1)
         .contentShape(.rect)
@@ -90,7 +101,7 @@ struct OvalTable: View {
     private var pot: some View {
         VStack(spacing: 2) {
             if state.potTotal > 0 { chips(3) }
-            Text("Pot \(state.potTotal)").font(.headline).monospacedDigit()
+            Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
             if state.pots.count > 1 {
                 Text(state.pots.indices.map { potName($0) + " \(state.pots[$0].amount)" }.joined(separator: " · "))
                     .font(.caption2).foregroundStyle(theme.muted)
@@ -103,7 +114,8 @@ struct OvalTable: View {
     }
 
     private func bet(_ amount: Chips) -> some View {
-        HStack(spacing: 2) { chips(1); Text("\(amount)").monospacedDigit() }.font(.caption2.bold())
+        HStack(spacing: 2) { chips(1); Text("\(amount)").monospacedDigit().contentTransition(.numericText()) }
+            .font(.caption2.bold())
     }
 
     private var dealerDisk: some View {

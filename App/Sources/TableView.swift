@@ -13,6 +13,10 @@ struct TableView: View {
     private var picking: Bool { state.phase == .showdown && session.canRunHand && state.pots.indices.contains(pot) }
 
     private var myStack: Chips { session.me.flatMap { state.seat($0)?.stack } ?? 0 }
+    /// The hand is over and I won chips in it.
+    private var iWon: Bool {
+        state.phase == .handComplete && (session.me.flatMap { state.seat($0) }.map { $0.stack > $0.stackAtHandStart } ?? false)
+    }
     private var nextLevel: BlindLevel? {
         state.config.levels.indices.contains(state.clock.levelIndex + 1) ? state.config.levels[state.clock.levelIndex + 1] : nil
     }
@@ -29,6 +33,7 @@ struct TableView: View {
             VStack(spacing: 0) {
                 Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
                 Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
+                    .contentTransition(.numericText()).animation(.default, value: myStack)
                 if let legal = session.legalActions, legal.callAmount > 0 {
                     Text("To call \(legal.callAmount)").foregroundStyle(theme.muted)
                 }
@@ -38,6 +43,7 @@ struct TableView: View {
         .padding(.horizontal)
         .foregroundStyle(theme.text)
         .background(theme.background.ignoresSafeArea())
+        .sensoryFeedback(.success, trigger: iWon) { _, won in won }
         .onChange(of: state.pots, initial: true) {
             winners = Array(repeating: [], count: state.pots.count)
             pot = 0
