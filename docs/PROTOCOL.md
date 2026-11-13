@@ -50,7 +50,7 @@ Enums without values (`Phase`, `Street`, `Rejection`) are plain strings.
 {"id":"00000000-0000-0000-0000-000000000001","payload":{"name":"Anna"},"type":"hello","v":1}
 ```
 
-Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host closes the older connection without sending it a message. A second `hello` on the same connection is answered with `malformed`.
+Send `hello` exactly once per connection, as the first message. The host closes a connection that has not completed the TLS handshake and `hello` within 10 s. `payload.token` (optional) is the token from an earlier `welcome`; with it the client takes its seat back after a disconnect. An unknown token counts as a new join. If a token connects a second time, the host sends the older connection `replaced` and closes it. A second `hello` on the same connection is answered with `malformed`.
 
 ### `command` – every game command
 
@@ -142,6 +142,7 @@ Clients only display what the last `state` says and never change it themselves.
 | `malformed` | message could not be read, or a second `hello` | stays open |
 | `removed` | the player was removed from the table, in the lobby or mid-game (or their join was undone); the token is no longer valid | closed |
 | `tableClosed` | the host ended the table; sent to every open connection before the host stops listening | closed |
+| `replaced` | another connection took the seat with the same token (e.g. the player's second device) | closed |
 
 ## Flow
 
@@ -166,7 +167,7 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 
 - Enable TCP keepalive (the iOS app uses 2 s idle, 2 s interval, 3 probes) so a vanished host is noticed within seconds.
 - If no answer to a `command` arrives within 10 s, drop the connection and reconnect with the token.
-- After `versionMismatch`, `tableFull`, `gameInProgress`, `removed` or `tableClosed`, do not reconnect automatically.
+- After `versionMismatch`, `tableFull`, `gameInProgress`, `removed`, `tableClosed` or `replaced`, do not reconnect automatically.
 - Treat a connection that fails before the TLS handshake completes as a wrong code (do not retry), unless the host was unreachable (connection refused, timeout, no route, DNS). A connection that drops after the handshake is retried.
 - Resolve the Bonjour service to an address before the TLS connection. Apple's Network.framework retries a failed handshake on a service endpoint forever instead of reporting it, so a wrong code would never fail. The iOS app resolves with a plain TCP connection, which the host sees as one extra connection that ends before TLS.
 - The cipher suite is plain TLS-PSK, which not every TLS stack offers by default (on Android, check the platform stack; BouncyCastle `bctls` supports it).

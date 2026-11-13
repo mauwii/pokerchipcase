@@ -13,6 +13,8 @@ public enum ClientEvent: Equatable, Sendable {
 
 public enum ClientFailure: Equatable, Sendable {
     case wrongCode, versionMismatch, tableFull, gameInProgress, removed, tableClosed
+    /// Another connection took this seat with the same token (e.g. the player's second device).
+    case replaced
 }
 
 public enum ClientError: Error, Equatable {
@@ -141,6 +143,7 @@ public actor TableClient {
             case .gameInProgress: fail(.gameInProgress)
             case .removed: fail(.removed)
             case .tableClosed: fail(.tableClosed)
+            case .replaced: fail(.replaced)
             default: break
             }
         }

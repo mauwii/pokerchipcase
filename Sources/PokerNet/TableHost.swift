@@ -178,11 +178,9 @@ public actor TableHost {
         if let t = hello.token, let p = snapshot.tokens[t] {
             player = p
             token = t
-            // The newest connection for a player wins; the old one is probably dead.
-            for (other, q) in bound where q == p && other != id {
-                channels[other]?.cancel()
-                drop(other)
-            }
+            // The newest connection for a player wins. Usually the old one is dead; if it is another
+            // device sharing the token, `replaced` stops it from taking the seat back.
+            for (other, q) in bound where q == p && other != id { reject(.replaced, other, replyTo: nil) }
         } else {
             player = UUID().uuidString
             do {

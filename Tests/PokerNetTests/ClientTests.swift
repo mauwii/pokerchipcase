@@ -214,6 +214,19 @@ struct ClientTests {
         await fake.dropAll()
     }
 
+    @Test func secondDeviceWithTheSameTokenEndsTheFirst() async throws {
+        let (host, port) = try await startHost()
+        let (ben, events) = await client(port)
+        let w = try await events.first { $0.welcome != nil }.welcome!
+        let (ben2, events2) = await client(port, token: w.token)
+        _ = try await events2.first { $0.welcome?.player == w.player }
+        _ = try await events.first { $0 == .failed(.replaced) }
+        #expect(await events.all.compactMap(\.welcome).count == 1)
+        #expect(await host.connectedPlayers == [w.player])
+        #expect(!(await events2.all.contains(.connectionLost)))
+        await ben.disconnect(); await ben2.disconnect(); await host.stop()
+    }
+
     @Test func removedPlayerFails() async throws {
         let (host, _, anna, ben, benEvents) = try await table()
         let benID = try await benEvents.first { $0.welcome != nil }.welcome!.player

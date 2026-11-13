@@ -68,6 +68,7 @@ struct HostLobbyTests {
         let second = try await RawClient.connect(port)
         second.send(hello("Ben", token: w.token))
         _ = try await second.welcome()
+        #expect(try await first.error() == WireErrorCode.replaced.rawValue)
         try await first.waitForClose()
         #expect(await host.connectedPlayers.contains(w.player))
         #expect(try await second.state().seats.count == 2)
