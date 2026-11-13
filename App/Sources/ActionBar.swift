@@ -13,6 +13,8 @@ struct ActionBar: View {
         self.state = state
     }
 
+    @Environment(\.theme) private var theme
+
     private var legal: LegalActions? { session.legalActions }
     private var disabled: Bool { legal == nil || session.isSending }
     private var stack: Chips { session.me.flatMap { state.seat($0)?.stack } ?? 0 }
@@ -27,13 +29,15 @@ struct ActionBar: View {
                     HStack {
                         ForEach(quickPicks, id: \.kind) { pick in
                             Button("\(label(pick.kind)) \(pick.raiseTo)") { raiseTo = pick.raiseTo }
-                                .buttonStyle(.bordered)
+                                .font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
+                                .frame(maxWidth: .infinity).padding(.vertical, 6)
+                                .overlay(Capsule().strokeBorder(theme.muted))
                         }
                     }
                 }
             }
             HStack {
-                Button("Fold", role: .destructive) { request(.fold) }
+                Button("Fold", role: .destructive) { request(.fold) }.buttonStyle(ThemeButtonStyle(.fold))
                 if legal?.canCheck ?? false {
                     Button("Check") { request(.check) }
                 } else {
@@ -44,7 +48,7 @@ struct ActionBar: View {
                     Button(state.currentBet == 0 ? "Bet \(x)" : "Raise to \(x)") { request(.raiseTo(amount: x)) }
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(ThemeButtonStyle())
         }
         .disabled(disabled)
         .padding(.bottom)

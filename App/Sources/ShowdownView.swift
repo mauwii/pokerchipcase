@@ -70,7 +70,7 @@ struct NextHandBar: View {
         Group {
             if session.canRunHand {
                 Button("Next hand") { Task { await session.send(.startNextHand) } }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(ThemeButtonStyle())
                     .disabled(session.isSending)
             } else {
                 Text("Waiting for \(dealerName(state)) to start the next hand").foregroundStyle(.secondary)

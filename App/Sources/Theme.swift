@@ -64,6 +64,34 @@ private struct Themed: ViewModifier {
     }
 }
 
+/// Full-width table button: accent fill for actions, the theme's fold color for Fold.
+struct ThemeButtonStyle: ButtonStyle {
+    enum Role { case primary, fold }
+    var role: Role
+
+    init(_ role: Role = .primary) { self.role = role }
+
+    func makeBody(configuration: Configuration) -> some View {
+        Styled(configuration: configuration, role: role)
+    }
+
+    private struct Styled: View {
+        let configuration: Configuration
+        let role: Role
+        @Environment(\.theme) private var theme
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .font(.body.bold()).lineLimit(1).minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                .foregroundStyle(role == .fold ? theme.text : theme.background)
+                .background(role == .fold ? theme.fold : theme.accent, in: .rect(cornerRadius: 10))
+                .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.4)
+        }
+    }
+}
+
 private extension Color {
     init(hex: UInt32) {
         self.init(red: Double(hex >> 16 & 0xff) / 255, green: Double(hex >> 8 & 0xff) / 255, blue: Double(hex & 0xff) / 255)
