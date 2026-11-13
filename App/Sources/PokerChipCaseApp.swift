@@ -16,7 +16,7 @@ struct PokerChipCaseApp: App {
                     StartView(onSession: { session = $0 })
                 }
             }
-            // themed() inside preferredColorScheme, so it sees the forced scheme.
+            // preferredColorScheme forces the window's scheme; themed() picks the theme from it.
             .themed()
             .preferredColorScheme(appearance.colorScheme)
             .onChange(of: session == nil, initial: true) { UIApplication.shared.isIdleTimerDisabled = session != nil }
