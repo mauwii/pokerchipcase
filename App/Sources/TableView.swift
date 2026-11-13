@@ -6,6 +6,11 @@ struct TableView: View {
     let session: TableSession
     let state: GameState
     @Environment(\.theme) private var theme
+    /// Showdown winners per pot, picked on the oval by the player running the hand.
+    @State private var winners: [Set<PlayerID>] = []
+    @State private var pot = 0
+
+    private var picking: Bool { state.phase == .showdown && session.canRunHand && state.pots.indices.contains(pot) }
 
     private var myStack: Chips { session.me.flatMap { state.seat($0)?.stack } ?? 0 }
     private var nextLevel: BlindLevel? {
@@ -19,7 +24,8 @@ struct TableView: View {
                 Text(hint.message).font(.headline).frame(maxWidth: .infinity).padding(8)
                     .background(theme.accent.opacity(0.25), in: .rect(cornerRadius: 8))
             }
-            OvalTable(state: state, viewer: session.me)
+            // One view for every phase, so it keeps its identity and animates into the showdown.
+            OvalTable(state: state, viewer: session.me, seatState: seatState, onTapSeat: onTapSeat)
             VStack(spacing: 0) {
                 Text("Your stack").font(.subheadline).foregroundStyle(theme.muted)
                 Text("\(myStack)").font(.system(size: 40, weight: .bold, design: .rounded)).monospacedDigit()
@@ -32,6 +38,30 @@ struct TableView: View {
         .padding(.horizontal)
         .foregroundStyle(theme.text)
         .background(theme.background.ignoresSafeArea())
+        .onChange(of: state.pots, initial: true) {
+            winners = Array(repeating: [], count: state.pots.count)
+            pot = 0
+        }
+    }
+
+    private var seatState: (Seat) -> SeatMark {
+        guard picking else { return { _ in SeatMark.normal } }
+        return { mark($0) }
+    }
+
+    private var onTapSeat: ((PlayerID) -> Void)? {
+        guard picking else { return nil }
+        return { toggle($0) }
+    }
+
+    private func mark(_ seat: Seat) -> SeatMark {
+        if winners.indices.contains(pot), winners[pot].contains(seat.id) { return .selected }
+        return state.pots[pot].eligible.contains(seat.id) ? .selectable : .dimmed
+    }
+
+    private func toggle(_ id: PlayerID) {
+        guard winners.indices.contains(pot), state.pots[pot].eligible.contains(id) else { return }
+        if winners[pot].contains(id) { winners[pot].remove(id) } else { winners[pot].insert(id) }
     }
 
     private var header: some View {
@@ -57,7 +87,7 @@ struct TableView: View {
     @ViewBuilder private var bottom: some View {
         switch state.phase {
         case .betting: ActionBar(session: session, state: state)
-        case .showdown: ShowdownView(session: session, state: state)
+        case .showdown: ShowdownView(session: session, state: state, winners: $winners, pot: $pot)
         case .handComplete: NextHandBar(session: session, state: state)
         default: EmptyView()
         }

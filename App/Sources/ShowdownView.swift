@@ -6,58 +6,41 @@ private func dealerName(_ state: GameState) -> String {
     state.dealerID.flatMap { state.seat($0)?.name } ?? ""
 }
 
+/// The pot picker and "Pay out" for the player running the hand. The winners are picked on the
+/// oval (`TableView` owns the selection); everyone else waits.
 struct ShowdownView: View {
     let session: TableSession
     let state: GameState
-    @State private var winners: [Set<PlayerID>] = []
+    @Binding var winners: [Set<PlayerID>]
+    @Binding var pot: Int
 
-    init(session: TableSession, state: GameState) {
-        self.session = session
-        self.state = state
-    }
-
-    private var selection: [Set<PlayerID>] {
-        winners.count == state.pots.count ? winners : Array(repeating: [], count: state.pots.count)
-    }
+    private var ready: Bool { winners.count == state.pots.count && !winners.contains { $0.isEmpty } }
 
     var body: some View {
         if session.canRunHand {
             VStack(spacing: 8) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        ForEach(state.pots.indices, id: \.self) { i in potSection(i) }
+                if state.pots.count > 1 {
+                    Picker("Pot", selection: $pot) {
+                        ForEach(state.pots.indices, id: \.self) { i in
+                            Text(i == 0 ? "Main \(state.pots[i].amount)" : "Side \(i) \(state.pots[i].amount)").tag(i)
+                        }
                     }
+                    .pickerStyle(.segmented)
                 }
+                Text("Tap the winners on the table").font(.caption).foregroundStyle(.secondary)
                 Button("Pay out") { payOut() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(session.isSending || selection.contains { $0.isEmpty })
+                    .buttonStyle(ThemeButtonStyle())
+                    .disabled(session.isSending || !ready)
             }
             .padding(.bottom)
-            .onChange(of: state.pots, initial: true) { winners = Array(repeating: [], count: state.pots.count) }
         } else {
             Text("Waiting for \(dealerName(state)) to pick the winners").foregroundStyle(.secondary).padding(.bottom)
         }
     }
 
-    private func potSection(_ i: Int) -> some View {
-        let pot = state.pots[i]
-        return VStack(alignment: .leading) {
-            Text(i == 0 ? "Main pot \(pot.amount)" : "Side pot \(i) \(pot.amount)").font(.headline)
-            ForEach(pot.eligible, id: \.self) { id in
-                Toggle(state.seat(id)?.name ?? "", isOn: Binding(
-                    get: { selection[i].contains(id) },
-                    set: { on in
-                        var s = selection
-                        if on { s[i].insert(id) } else { s[i].remove(id) }
-                        winners = s
-                    }))
-            }
-        }
-    }
-
     private func payOut() {
         let order = state.seats.map(\.id)
-        let lists = selection.map { chosen in order.filter(chosen.contains) }
+        let lists = winners.map { chosen in order.filter(chosen.contains) }
         Task { await session.send(.resolveShowdown(winners: lists)) }
     }
 }
