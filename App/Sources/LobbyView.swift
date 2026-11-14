@@ -33,7 +33,7 @@ struct LobbyView: View {
             }
             Section("Players") {
                 if session.isHost {
-                    ForEach(state.seats, id: \.id) { seat in Text(seat.name).deleteDisabled(seat.id == state.hostID) }
+                    ForEach(state.seats, id: \.id) { seat in Text(seat.name).deleteDisabled(seat.id == state.hostID || session.isSending).moveDisabled(session.isSending) }
                         .onMove { source, destination in
                             var ids = state.seats.map(\.id)
                             ids.move(fromOffsets: source, toOffset: destination)

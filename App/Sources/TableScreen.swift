@@ -49,6 +49,7 @@ struct TableScreen: View {
                 Menu("Table", systemImage: "ellipsis.circle") {
                     if session.isHost, let state = session.state, state.phase != .lobby {
                         HostMenu(session: session, state: state, pending: $hostPending)
+                            .disabled(session.isSending)
                         Divider()
                     }
                     Button(session.isHost ? "End table" : "Leave table", role: .destructive) { confirmLeave = true }
