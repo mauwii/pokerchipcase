@@ -167,6 +167,7 @@ If the format changes incompatibly, `v` increases. A receiver treats any message
 
 - Enable TCP keepalive (the iOS app uses 2 s idle, 2 s interval, 3 probes) so a vanished host is noticed within seconds.
 - If no answer to a `command` arrives within 10 s, drop the connection and reconnect with the token.
+- If a connection attempt has not reached `welcome` within 10 s, drop it and try again. A Bonjour resolve or TLS handshake can hang without ever reporting an error.
 - After `versionMismatch`, `tableFull`, `gameInProgress`, `removed`, `tableClosed` or `replaced`, do not reconnect automatically.
 - Any other `error` before `welcome` answers your `hello`, so the host cannot serve this client (for example an older host that answers `malformed` to a newer `hello`). Stop and treat it like `versionMismatch` instead of waiting for a `welcome` that never comes.
 - Treat a `bad_record_mac` alert during the TLS handshake as a wrong code (do not retry). Retry every other failure, before or after the handshake: a host that is suspended or shuts down mid-handshake ends the connection with a reset or another TLS error.

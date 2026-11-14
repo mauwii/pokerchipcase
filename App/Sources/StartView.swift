@@ -6,7 +6,7 @@ import SwiftUI
 struct StartView: View {
     let onSession: (TableSession) -> Void
     @AppStorage("playerName") private var playerName = ""
-    @State private var nearby = NearbyTables()
+    let nearby: NearbyTables
     @State private var savedGame: HostSnapshot?
     @State private var ticket: SeatTicket?
     @State private var creating = false
@@ -60,7 +60,6 @@ struct StartView: View {
             .toolbar { Button("Settings", systemImage: "gearshape") { showSettings = true } }
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .task { await nearby.run() }
         #if DEBUG
         .task { if DebugBots.auto, !name.isEmpty { host(.newTable(hostName: name, tableName: defaultTableName, config: .quick)) } }
         #endif
