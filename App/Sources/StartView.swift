@@ -130,8 +130,7 @@ struct StartView: View {
     }
 }
 
-/// By name: a new endpoint for the same table must not replace the open join sheet (#26).
-extension DiscoveredTable: @retroactive Identifiable { public var id: String { name } }
+extension DiscoveredTable: @retroactive Identifiable { public var id: Self { self } }
 
 private struct CreateTableSheet: View {
     let defaultName: String
