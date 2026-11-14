@@ -32,6 +32,9 @@ struct TableScreen: View {
                         RankingView(state: state, onLeave: leave)
                     } else {
                         TableView(session: session, state: state)
+                            // iOS 18 keeps the bar's background and hairline once the banner has
+                            // been shown; the table does not scroll, so it never needs them.
+                            .toolbarBackground(.hidden, for: .navigationBar)
                     }
                 } else {
                     ProgressView("Connecting…")
