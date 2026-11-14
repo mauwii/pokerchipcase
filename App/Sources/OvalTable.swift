@@ -115,7 +115,7 @@ struct OvalTable: View {
                 Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
             }
             if state.pots.count > 1 {
-                Text(state.pots.indices.map { potName($0) + " \(state.pots[$0].amount)" }.joined(separator: " · "))
+                Text(state.pots.indices.map { potName($0, of: state.pots.count) + " " + state.pots[$0].amount.formatted() }.joined(separator: " · "))
                     .font(.caption2).foregroundStyle(theme.muted)
             }
         }
@@ -131,10 +131,6 @@ struct OvalTable: View {
 
     private func seatOpacity(_ mark: SeatMark, folded: Bool) -> Double {
         if mark == .dimmed { 0.3 } else if folded { 0.4 } else { 1 }
-    }
-
-    private func potName(_ i: Int) -> String {
-        if i == 0 { "Main" } else if state.pots.count == 2 { "Side" } else { "Side \(i)" }
     }
 
     private func bet(_ amount: Chips) -> some View {
@@ -163,4 +159,9 @@ struct OvalTable: View {
             }
         }
     }
+}
+
+/// The display name of pot `index` among `count` pots: "Main", then "Side" or "Side 1", "Side 2", ….
+func potName(_ index: Int, of count: Int) -> String {
+    if index == 0 { "Main" } else if count == 2 { "Side" } else { "Side \(index)" }
 }

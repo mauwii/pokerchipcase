@@ -49,10 +49,13 @@ struct TableView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sensoryFeedback(.success, trigger: iWon) { _, won in won }
-        .onChange(of: state.pots, initial: true) {
-            winners = Array(repeating: [], count: state.pots.count)
-            pot = 0
-        }
+        .onChange(of: state.pots, initial: true) { resetPicks() }
+        .onChange(of: state.handNumber) { resetPicks() }
+    }
+
+    private func resetPicks() {
+        winners = Array(repeating: [], count: state.pots.count)
+        pot = 0
     }
 
     private var seatState: (Seat) -> SeatMark {
@@ -71,7 +74,7 @@ struct TableView: View {
     }
 
     private func toggle(_ id: PlayerID) {
-        guard winners.indices.contains(pot), state.pots[pot].eligible.contains(id) else { return }
+        guard state.pots.indices.contains(pot), winners.indices.contains(pot), state.pots[pot].eligible.contains(id) else { return }
         if winners[pot].contains(id) { winners[pot].remove(id) } else { winners[pot].insert(id) }
     }
 

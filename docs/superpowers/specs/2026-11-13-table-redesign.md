@@ -59,7 +59,7 @@ The logic in `ActionBar.swift` stays the same: slider, quick picks and the all-i
 For the player who runs the hand (`session.canRunHand`):
 
 - Winners are picked on the oval, by tapping seats. This replaces the toggle list.
-- With more than one pot, a segmented picker above the table selects the pot, e.g. "Main 1,020 · Side 260". The selection is kept per pot.
+- With more than one pot, a segmented picker in the bottom bar below the table selects the pot, e.g. "Main 1,020 · Side 260". The selection is kept per pot.
 - Only seats eligible for the selected pot can be tapped. The other seats are dimmed. A chosen seat gets an accent ring and a check mark.
 - "Pay out" sits where the action bar usually is. It stays disabled until every pot has at least one winner.
 - The existing reset of the selection when `state.pots` changes stays.
