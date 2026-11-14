@@ -25,6 +25,9 @@ enum PSK {
         sec_protocol_options_append_tls_ciphersuite(sec, tls_ciphersuite_t(rawValue: UInt16(TLS_PSK_WITH_AES_128_GCM_SHA256))!)
         sec_protocol_options_set_min_tls_protocol_version(sec, .TLSv12)
         sec_protocol_options_set_max_tls_protocol_version(sec, .TLSv12)
+        // A resumed session skips the PSK, so a device that joined once could rejoin with any code.
+        sec_protocol_options_set_tls_resumption_enabled(sec, false)
+        sec_protocol_options_set_tls_tickets_enabled(sec, false)
 
         let tcp = NWProtocolTCP.Options()
         tcp.enableKeepalive = true
