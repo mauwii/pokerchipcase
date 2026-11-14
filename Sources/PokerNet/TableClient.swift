@@ -39,6 +39,7 @@ public actor TableClient {
     private let name: String
     private let retryDelay: Duration
     private let ackTimeout: Duration
+    private let connectTimeout: Duration
     private var channel: MessageChannel?
     private var connected = false
     private var running = false
@@ -48,14 +49,17 @@ public actor TableClient {
     private var pending: [UUID: CheckedContinuation<AckResult, Error>] = [:]
 
     /// `ackTimeout`: how long `send` waits before treating the connection as dead and reconnecting.
+    /// `connectTimeout`: how long a connection attempt may take to reach `welcome` before it is retried.
     public init(endpoint: NWEndpoint, code: TableCode, name: String, token: String? = nil,
-                retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10)) {
+                retryDelay: Duration = .seconds(1), ackTimeout: Duration = .seconds(10),
+                connectTimeout: Duration = .seconds(10)) {
         self.endpoint = endpoint
         self.code = code
         self.name = name
         self.token = token
         self.retryDelay = retryDelay
         self.ackTimeout = ackTimeout
+        self.connectTimeout = connectTimeout
         (events, continuation) = AsyncStream.makeStream()
     }
 
@@ -108,7 +112,17 @@ public actor TableClient {
             }
             await self?.channelEnded(failure, attempt: attempt)
         }
+        // A connection can hang in `.preparing` (Bonjour resolve, TLS handshake) without ever failing.
+        Task { [weak self, connectTimeout] in
+            try? await Task.sleep(for: connectTimeout)
+            await self?.connectTimedOut(attempt)
+        }
         channel.start()
+    }
+
+    private func connectTimedOut(_ attempt: Int) async {
+        guard attempt == generation, running, !connected else { return }
+        await reconnect()
     }
 
     private func handle(_ event: ChannelEvent, attempt: Int) {

@@ -11,11 +11,11 @@ extension ClientEvent {
 
 private func client(
     _ port: NWEndpoint.Port, name: String = "Ben", token: String? = nil, code: TableCode = code4711,
-    ackTimeout: Duration = .seconds(10)
+    ackTimeout: Duration = .seconds(10), connectTimeout: Duration = .seconds(10)
 ) async -> (TableClient, EventRecorder<ClientEvent>) {
     let client = TableClient(
         endpoint: loopback(port), code: code, name: name, token: token,
-        retryDelay: .milliseconds(100), ackTimeout: ackTimeout
+        retryDelay: .milliseconds(100), ackTimeout: ackTimeout, connectTimeout: connectTimeout
     )
     let recorder = EventRecorder(client.events)
     await client.connect()
@@ -84,6 +84,29 @@ private actor FakeHost {
 
     func dropAll() {
         channels.forEach { $0.cancel() }
+        listener.cancel()
+    }
+}
+
+/// Accepts plain TCP and never answers, so a client's TLS handshake hangs in `.preparing`.
+private actor SilentListener {
+    let listener: NWListener
+    private(set) var connections: [NWConnection] = []
+
+    init() throws { listener = try NWListener(using: .tcp, on: .any) }
+
+    func start() async throws -> NWEndpoint.Port {
+        listener.newConnectionHandler = { [weak self] connection in
+            connection.start(queue: .global())
+            Task { await self?.hold(connection) }
+        }
+        return try await listener.startAndWaitUntilReady(queue: .global())
+    }
+
+    private func hold(_ connection: NWConnection) { connections.append(connection) }
+
+    func stop() {
+        connections.forEach { $0.cancel() }
         listener.cancel()
     }
 }
@@ -281,6 +304,15 @@ struct ClientTests {
         try await eventually { await fake.hellos == 2 }
         await ben.disconnect()
         await fake.dropAll()
+    }
+
+    @Test func hangingConnectIsRetried() async throws {
+        let silent = try SilentListener()
+        let port = try await silent.start()
+        let (ben, _) = await client(port, connectTimeout: .milliseconds(300))
+        try await eventually { await silent.connections.count >= 2 }
+        await ben.disconnect()
+        await silent.stop()
     }
 
     @Test func disconnectStopsRetrying() async throws {
