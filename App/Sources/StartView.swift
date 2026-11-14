@@ -74,8 +74,10 @@ struct StartView: View {
                 let name = name
                 // Same table as the stored ticket: rejoin its seat instead of taking a new one.
                 let token = ticket.flatMap { $0.tableName == table.name && $0.code == code ? $0.token : nil }
+                // The endpoint listed now: it may have changed while the sheet was open.
+                let endpoint = nearby.tables.first { $0.name == table.name }?.endpoint ?? table.endpoint
                 connect {
-                    await TableSession.join(endpoint: table.endpoint, tableName: table.name, code: code, name: name,
+                    await TableSession.join(endpoint: endpoint, tableName: table.name, code: code, name: name,
                                             token: token)
                 }
             }

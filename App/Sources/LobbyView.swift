@@ -6,12 +6,16 @@ struct LobbyView: View {
     let session: TableSession
     let state: GameState
     @State private var dealer: PlayerID?
+    /// The order just dragged, shown until the host's state with it arrives, so the row does not jump back.
+    @State private var moved: [PlayerID]?
     @State private var nearby = NearbyTables()
 
     init(session: TableSession, state: GameState) {
         self.session = session
         self.state = state
     }
+
+    private var seats: [Seat] { moved.map { $0.compactMap(state.seat) } ?? state.seats }
 
     private var minutes: Int { Int((state.config.levels.first?.duration ?? 0) / 60) }
 
@@ -33,14 +37,19 @@ struct LobbyView: View {
             }
             Section("Players") {
                 if session.isHost {
-                    ForEach(state.seats, id: \.id) { seat in Text(seat.name).deleteDisabled(seat.id == state.hostID) }
+                    // Edits during a send return early: disabling the controls would hide the grips and shift the rows.
+                    ForEach(seats, id: \.id) { seat in Text(seat.name).deleteDisabled(seat.id == state.hostID) }
                         .onMove { source, destination in
-                            var ids = state.seats.map(\.id)
+                            guard !session.isSending else { return }
+                            var ids = seats.map(\.id)
                             ids.move(fromOffsets: source, toOffset: destination)
-                            Task { await session.send(.arrangeSeats(order: ids)) }
+                            moved = ids
+                            // The host sends its state before the ack, so the new order is in place when this returns.
+                            Task { await session.send(.arrangeSeats(order: ids)); moved = nil }
                         }
                         .onDelete { offsets in
-                            let ids = offsets.map { state.seats[$0].id }.filter { $0 != state.hostID }
+                            guard !session.isSending else { return }
+                            let ids = offsets.map { seats[$0].id }.filter { $0 != state.hostID }
                             Task { for id in ids { await session.send(.removePlayer(player: id)) } }
                         }
                 } else {

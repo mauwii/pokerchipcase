@@ -39,6 +39,23 @@ struct SessionTests {
         try await eventually { ben.state?.phase == .betting && ben.rejection == nil }
     }
 
+    @Test func rejectionSurvivesStateWithSameVersion() async throws {
+        let anna = try await hostSession()
+        defer { Task { await anna.leave() } }
+        let ben = await guestSession(anna)
+        defer { Task { await ben.leave() } }
+        try await eventually { ben.state?.seats.count == 2 }
+        await ben.send(.startTournament(button: ben.me!))
+        #expect(ben.rejection == .notHost)
+        // The rejoin broadcasts the same state version again.
+        await anna.tableHost!.disconnectAll()
+        try await eventually { ben.connection == .reconnecting }
+        try await eventually { ben.connection == .connected }
+        // The state follows the welcome on the same stream; give it time to be handled.
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(ben.rejection == .notHost)
+    }
+
     @Test func turnAndDealerDecideWhatEachPlayerMayDo() async throws {
         let anna = try await hostSession()
         defer { Task { await anna.leave() } }

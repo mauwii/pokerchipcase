@@ -9,6 +9,8 @@ struct TableScreen: View {
     @State private var confirmLeave = false
     @State private var hostPending: HostConfirm?
     @State private var leaveFailed = false
+    /// A send still running after a moment; a fast one shows no banner, which would push the screen down and back.
+    @State private var slowSend = false
 
     init(session: TableSession, onLeave: @escaping () -> Void) {
         self.session = session
@@ -45,6 +47,11 @@ struct TableScreen: View {
             // Inline, so the oval table gets the height on small iPhones.
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .top) { banner }
+            .task(id: session.isSending) {
+                slowSend = false
+                guard session.isSending, (try? await Task.sleep(for: .milliseconds(500))) != nil else { return }
+                slowSend = true
+            }
             // Here, not in ActionBar: that is re-inserted every hand with the trigger already set.
             // nil while waiting, the street on my turn, so a new street during my turn fires too.
             .sensoryFeedback(.warning, trigger: session.legalActions != nil ? session.state?.street : nil) { $1 != nil }
@@ -52,6 +59,7 @@ struct TableScreen: View {
                 Menu("Table", systemImage: "ellipsis.circle") {
                     if session.isHost, let state = session.state, state.phase != .lobby {
                         HostMenu(session: session, state: state, pending: $hostPending)
+                            .disabled(session.isSending)
                         Divider()
                     }
                     Button(session.isHost ? "End table" : "Leave table", role: .destructive) { confirmLeave = true }
@@ -82,7 +90,7 @@ struct TableScreen: View {
 
     private var bannerText: Text? {
         if session.connection == .reconnecting { return Text("Reconnecting…") }
-        if session.isSending { return Text("Sending…") }
+        if session.isSending, slowSend { return Text("Sending…") }
         if let rejection = session.rejection { return Text(rejection.message).foregroundStyle(.red) }
         if let problem = session.problem { return Text(problem.text).foregroundStyle(.red) }
         return nil
