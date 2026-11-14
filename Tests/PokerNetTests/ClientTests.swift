@@ -161,6 +161,18 @@ struct ClientTests {
         await host.stop()
     }
 
+    @Test func wrongCodeFailsAfterAnEarlierJoinWithTheRightCode() async throws {
+        let (host, port) = try await startHost()
+        let (ben, benEvents) = await client(port)
+        _ = try await benEvents.first { $0.welcome != nil }
+        await ben.disconnect()
+        let (eve, events) = await client(port, name: "Eve", code: TableCode("0815")!)
+        let first = try await events.first { $0 == .failed(.wrongCode) || $0.welcome != nil }
+        #expect(first == .failed(.wrongCode))
+        await eve.disconnect()
+        await host.stop()
+    }
+
     @Test func gameInProgressFails() async throws {
         let (host, port, anna, ben, _) = try await table()
         let hostID = await host.snapshot.game.state.hostID
