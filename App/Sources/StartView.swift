@@ -183,17 +183,15 @@ private struct JoinSheet: View {
             // Focused on open, so the number pad is up and the code can be typed right away.
             Form { TextField("Code", text: $text).keyboardType(.numberPad).focused($codeFocused) }
                 .onAppear { codeFocused = true }
+                // Joins on the fourth digit; the number pad has no return key and a Join button sits out of reach.
+                .onChange(of: text) {
+                    guard let code = TableCode($1) else { return }
+                    dismiss()
+                    onJoin(code)
+                }
                 .navigationTitle(table.name)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Join") {
-                            guard let code = TableCode(text) else { return }
-                            dismiss()
-                            onJoin(code)
-                        }
-                        .disabled(TableCode(text) == nil)
-                    }
                 }
         }
     }
