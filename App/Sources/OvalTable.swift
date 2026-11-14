@@ -115,7 +115,7 @@ struct OvalTable: View {
                 Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
             }
             if state.pots.count > 1 {
-                Text(state.pots.indices.map { potName($0, of: state.pots.count) + " \(state.pots[$0].amount)" }.joined(separator: " · "))
+                Text(state.pots.indices.map { potName($0, of: state.pots.count) + " " + state.pots[$0].amount.formatted() }.joined(separator: " · "))
                     .font(.caption2).foregroundStyle(theme.muted)
             }
         }
