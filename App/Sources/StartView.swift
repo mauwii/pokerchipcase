@@ -75,8 +75,10 @@ struct StartView: View {
                 let name = name
                 // Same table as the stored ticket: rejoin its seat instead of taking a new one.
                 let token = ticket.flatMap { $0.tableName == table.name && $0.code == code ? $0.token : nil }
+                // The endpoint listed now: it may have changed while the sheet was open.
+                let endpoint = nearby.tables.first { $0.name == table.name }?.endpoint ?? table.endpoint
                 connect {
-                    await TableSession.join(endpoint: table.endpoint, tableName: table.name, code: code, name: name,
+                    await TableSession.join(endpoint: endpoint, tableName: table.name, code: code, name: name,
                                             token: token)
                 }
             }
@@ -128,7 +130,8 @@ struct StartView: View {
     }
 }
 
-extension DiscoveredTable: @retroactive Identifiable { public var id: Self { self } }
+/// By name: a new endpoint for the same table must not replace the open join sheet (#26).
+extension DiscoveredTable: @retroactive Identifiable { public var id: String { name } }
 
 private struct CreateTableSheet: View {
     let defaultName: String
