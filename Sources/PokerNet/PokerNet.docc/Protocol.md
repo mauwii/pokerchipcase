@@ -11,6 +11,7 @@ This document describes everything a compatible client (for example an Android a
 | TLS | TLS 1.2, pre-shared key, cipher suite `TLS_PSK_WITH_AES_128_GCM_SHA256` |
 | PSK | HKDF-SHA256: input = 4-digit table code (UTF-8), salt = `pokerchipcase-v1` (UTF-8), info = `pokerchipcase-psk` (UTF-8), 32-byte output |
 | PSK identity | `pokerchipcase` (UTF-8) |
+| Session resumption | Off on both sides (no session IDs, no tickets): a resumed session skips the PSK, so a device that joined once could rejoin with any code |
 | PSK test vector | code `4711` → `67a659eb4579867f3873c0e9311b75f65b3d6d0b7c0c7cdc7687d0fb78f423f2` (hex) |
 | Peer-to-peer | iOS additionally uses AWDL (`includePeerToPeer`); other platforms use the shared Wi-Fi |
 
