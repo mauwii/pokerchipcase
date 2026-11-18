@@ -4,6 +4,7 @@ extension XCUIApplication {
     /// Launches the app in English with the given debug launch arguments.
     /// `theme` and `appearance` pin the look; sweeps never pass them, because a
     /// launch argument wins over the Settings sheet.
+    /// `storedPlayerName` seeds the saved preference without overriding subsequent writes.
     @discardableResult
     static func launched(
         debugTable: Bool = false,
@@ -12,7 +13,8 @@ extension XCUIApplication {
         fourColorDeck: Bool = false,
         playerName: String? = nil,
         theme: String? = nil,
-        appearance: String? = nil
+        appearance: String? = nil,
+        storedPlayerName: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -24,6 +26,7 @@ extension XCUIApplication {
         if let theme { args += ["-theme", theme] }
         if let appearance { args += ["-appearance", appearance] }
         app.launchArguments = args
+        if let storedPlayerName { app.launchEnvironment["POKERCHIPCASE_STORED_PLAYER_NAME"] = storedPlayerName }
         app.launch()
         return app
     }

@@ -62,6 +62,18 @@ public struct Game: Codable, Equatable, Sendable {
         state.version = version
     }
 
+    /// Updates a seat's display name in the current state and undo history without recording a game action.
+    public mutating func renameSeat(_ player: PlayerID, to name: String) {
+        for index in state.seats.indices where state.seats[index].id == player {
+            state.seats[index].name = name
+        }
+        for step in history.indices {
+            for index in history[step].seats.indices where history[step].seats[index].id == player {
+                history[step].seats[index].name = name
+            }
+        }
+    }
+
     /// Drops all but the `count` newest undo steps.
     public mutating func keepHistory(last count: Int) {
         history = Array(history.suffix(count))

@@ -33,5 +33,7 @@ input field.
 
 Use library tests for legacy snapshot decoding, Unicode, byte limits, and undo
 preservation. Use XCUITest for initial name display and persistence after
-relaunch. Run lint, package tests, DocC, the simulator app build, and the UI suite
+relaunch. Seed the actual saved preference through a debug-only launch environment
+value; a UserDefaults argument-domain override would mask subsequent writes.
+Run lint, package tests, DocC, the simulator app build, and the UI suite
 required by AGENTS.md. Verify new regression cases fail before the fixes.

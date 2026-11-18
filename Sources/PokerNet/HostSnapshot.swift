@@ -21,6 +21,25 @@ public struct HostSnapshot: Codable, Equatable, Sendable {
         self.code = code
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case game, tokens, tableName, code
+    }
+
+    /// Restores a table, applying the current host-name limits to older saves and their undo history.
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        var game = try values.decode(Game.self, forKey: .game)
+        if let host = game.state.seat(game.state.hostID) {
+            game.renameSeat(host.id, to: TableHost.seatName(host.name))
+        }
+        self.init(
+            game: game,
+            tokens: try values.decode([String: PlayerID].self, forKey: .tokens),
+            tableName: try values.decode(String.self, forKey: .tableName),
+            code: try values.decode(TableCode.self, forKey: .code)
+        )
+    }
+
     /// Starts a new lobby with a fresh host ID and token; the host is the only player seated, with a name cut like a guest's.
     public static func newTable(
         hostName: String, tableName: String, code: TableCode = .random(), config: TournamentConfig

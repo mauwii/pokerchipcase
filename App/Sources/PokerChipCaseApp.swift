@@ -13,6 +13,10 @@ struct PokerChipCaseApp: App {
     init() {
         Appearance.migrate(in: .standard)
         #if DEBUG
+        // Seed persisted preferences before StartView reads them; launch arguments override later writes.
+        if let name = ProcessInfo.processInfo.environment["POKERCHIPCASE_STORED_PLAYER_NAME"] {
+            UserDefaults.standard.set(name, forKey: "playerName")
+        }
         Appearance.checkMigration()
         CardBackPattern.checkMonogram()
         #endif
