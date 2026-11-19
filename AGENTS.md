@@ -59,15 +59,16 @@ Run the first four from the repo root before opening a PR; CI runs the same four
 
 ## Fork pull requests
 
-Fork PRs run CI without secrets, so the SonarCloud scan and issue check are skipped. After review, move the PR to a branch in this repo so it is scanned before it reaches `main`:
+Fork PRs run CI without secrets, so the SonarCloud scan and issue check are skipped. A first-time contributor's workflow runs wait for the owner's approval in the Actions tab. After review, merge the PR into a branch in this repo, so it is scanned before it reaches `main` and the contributor's PR shows as merged:
 
 ```sh
-gh pr checkout <N>
-git push origin HEAD:contrib/<N>
-gh pr create --head contrib/<N> --base main --title "<original title>" --body "Moved from #<N> for the SonarCloud scan."
+git push origin origin/main:refs/heads/contrib/<N>
+gh pr edit <N> --base contrib/<N>
+gh pr merge <N> --merge
+gh pr create --head contrib/<N> --base main --title "<original title>" --body "Merges #<N> after the SonarCloud scan."
 ```
 
-Close the original PR with a link to the new one. The commits keep their author.
+Fix SonarCloud findings on `contrib/<N>`, and run the UI tests there if the PR touches `App/`. The commits keep their author. Add no AI co-author trailer or "Generated with" footer to the contributor's work, its merge, a review of it, or the `contrib/<N>` PR.
 
 ## Agent tooling
 
