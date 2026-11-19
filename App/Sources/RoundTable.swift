@@ -187,8 +187,10 @@ struct RoundTable: View {
             Text(winners.map(\.0.name).joined(separator: ", ")).font(.caption.bold()).accessibilityIdentifier("winners")
         }
         .lineLimit(1).minimumScaleFactor(0.7)
-        .foregroundStyle(theme.onTable)
-        .onTableShadow(theme.onTableShadow)
+        .foregroundStyle(theme.seatText)
+        .padding(.horizontal, 4).padding(.vertical, 2)
+        .background(theme.seat, in: .rect(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(theme.seatBorder, lineWidth: 1))
     }
 
     private var pot: some View {
@@ -197,6 +199,11 @@ struct RoundTable: View {
             if state.potTotal > 0 {
                 chips(3)
                 Text("Pot \(state.potTotal)").font(.headline).monospacedDigit().contentTransition(.numericText())
+                    // A plate in every theme: dark ink on Rubin's red felt still fails the audit (3.49 at the edge).
+                    .foregroundStyle(theme.seatText)
+                    .padding(.horizontal, 4).padding(.vertical, 2)
+                    .background(theme.seat, in: .rect(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(theme.seatBorder, lineWidth: 1))
                     .accessibilityIdentifier("pot")
             }
             if state.pots.count > 1 {

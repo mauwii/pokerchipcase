@@ -36,11 +36,7 @@ enum KnownAuditIssues {
         // In Neon dark it fails whatever the ink and ground: full ink on a flat room (16:1) too, and with the table or
         // the navigation bar hidden. The entry matches by identifier, so it also skips Felt, which passes today.
         KnownAuditIssue(type: .contrast, identifier: "nextLevel", issue: 149),
-        KnownAuditIssue(type: .contrast, identifier: "pot", issue: 149),
-        KnownAuditIssue(type: .contrast, identifier: "quickPick", issue: 150),
         KnownAuditIssue(type: .contrast, identifier: "cardGlyph", issue: 151),
-        KnownAuditIssue(type: .contrast, identifier: "winningHands", issue: 152),
-        KnownAuditIssue(type: .contrast, identifier: "winners", issue: 152),
     ]
 
     /// True when `issue`, found on `screen`, is a known finding, so the audit does not fail on it.

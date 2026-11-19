@@ -84,7 +84,7 @@ private extension Theme {
     static let feltLight = Theme(
         room: [0x8fd0c6, 0x57a9a0, 0x36877f], surface: [0x5fcf86, 0x3aa862, 0x2b8a4e], rail: .wood, cushion: 0x2a8a50,
         line: gold.opacity(0.7), seat: Color(hex: 0xfffcf4), seatBorder: Color(hex: 0x3c280a).opacity(0.25),
-        seatText: 0x1c2a22, text: 0x062522, onTable: 0xfffdf6, onTableShadow: true, lightSeat: true, mutedOpacity: 0.9,
+        seatText: 0x1c2a22, text: 0x062522, onTable: 0x062522, lightSeat: true, mutedOpacity: 0.9,
         accent: gold, onAccent: goldInk, formTint: Color(hex: 0x062522), fold: 0xc0483a)
 
     static let feltDark = Theme(
@@ -117,7 +117,7 @@ private extension Theme {
     static let rubyLight = Theme(
         room: [0xdcc8ad, 0xbfa684, 0xa08764], surface: [0xee6f6a, 0xd04a4a, 0xb23638], rail: .leather, cushion: 0xb23638,
         line: gold.opacity(0.75), seat: Color(hex: 0xfffcf6), seatBorder: Color(hex: 0x782828).opacity(0.25),
-        seatText: 0x3a1c1c, text: 0x3a1c1c, onTable: 0xfffdf8, onTableShadow: true, lightSeat: true, mutedOpacity: 0.9,
+        seatText: 0x3a1c1c, text: 0x3a1c1c, onTable: 0x3a1c1c, lightSeat: true, mutedOpacity: 0.9,
         accent: gold, onAccent: goldInk, formTint: Color(hex: 0x3a1c1c), fold: 0x8e2f2a)
 
     static let rubyDark = Theme(
@@ -130,7 +130,7 @@ private extension Theme {
         room: [0xb9c9e1, 0x8ea5c7, 0x6b85ac], surface: [0x86b6f7, 0x5b93e6, 0x3f78cf],
         rail: .chrome([0x9aa0aa, 0xe9ecf0, 0x888e98, 0xf4f6f8, 0x9298a2, 0xdde0e5]), cushion: 0xb3243a, cushionWidth: 0.025,
         line: Color(hex: 0xf5d682).opacity(0.9), seat: Color.white, seatBorder: Color(hex: 0x14234a).opacity(0.2),
-        seatText: 0x14234a, text: 0x14234a, onTable: 0xffffff, onTableShadow: true, lightSeat: true, mutedOpacity: 0.9,
+        seatText: 0x14234a, text: 0x14234a, onTable: 0x14234a, lightSeat: true, mutedOpacity: 0.9,
         accent: Color(hex: 0x1f4e9c), onAccent: .white, formTint: Color(hex: 0x14234a), fold: 0xc0483a, chips: royalChips)
 
     static let royalDark = Theme(

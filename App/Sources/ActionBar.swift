@@ -30,8 +30,10 @@ struct ActionBar: View {
                         Button { raiseTo = pick.raiseTo } label: {
                             Text("\(label(pick.kind)) \(pick.raiseTo)")
                                 .font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
+                                .foregroundStyle(theme.seatText)
                                 .frame(maxWidth: .infinity).padding(.vertical, 6)
-                                .overlay(Capsule().strokeBorder(theme.muted))
+                                .background(theme.seat, in: Capsule())
+                                .overlay(Capsule().strokeBorder(theme.seatBorder))
                                 .contentShape(Capsule())
                         }
                         .accessibilityIdentifier("quickPick")
