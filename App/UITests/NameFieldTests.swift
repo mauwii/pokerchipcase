@@ -31,7 +31,7 @@ final class NameFieldTests: XCTestCase {
     }
 
     func testPrefilledValidNameIsPreserved() {
-        let app = XCUIApplication.launched(theme: "felt", appearance: "light", storedPlayerName: "  Anna  ")
+        let app = XCUIApplication.launched(look: ("felt", "light"), storedPlayerName: "  Anna  ")
         defer { app.terminate() }
         let field = app.textFields["playerName"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
@@ -39,7 +39,7 @@ final class NameFieldTests: XCTestCase {
     }
 
     func testPrefilledEmptyNameStaysEmpty() {
-        let app = XCUIApplication.launched(theme: "felt", appearance: "light", storedPlayerName: "")
+        let app = XCUIApplication.launched(look: ("felt", "light"), storedPlayerName: "")
         defer { app.terminate() }
         let field = app.textFields["playerName"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
@@ -48,7 +48,7 @@ final class NameFieldTests: XCTestCase {
     }
 
     private func assertPrefilledName(_ name: String, becomes expected: String, screenshot: String) {
-        let app = XCUIApplication.launched(theme: "felt", appearance: "light", storedPlayerName: name)
+        let app = XCUIApplication.launched(look: ("felt", "light"), storedPlayerName: name)
         let field = app.textFields["playerName"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         // Swift equality also accepts canonically equivalent Unicode spellings returned by accessibility.
@@ -60,7 +60,7 @@ final class NameFieldTests: XCTestCase {
         app.terminate()
 
         // Relaunch without seeding a name to check the shortened value was persisted.
-        let reopened = XCUIApplication.launched(theme: "felt", appearance: "light")
+        let reopened = XCUIApplication.launched(look: ("felt", "light"))
         defer { reopened.terminate() }
         let restored = reopened.textFields["playerName"]
         XCTAssertTrue(restored.waitForExistence(timeout: 10))
