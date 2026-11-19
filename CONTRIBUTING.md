@@ -24,20 +24,21 @@ Launch the app with the argument `-debugTable` to get a table full of bots on a 
 
 ## Checks
 
-Run these from the repo root before you open a pull request. CI runs the same four.
+Run these from the repo root before you open a pull request. CI runs the same checks.
 
 ```sh
 pre-commit run --all-files
 swift test
 xcodebuild docbuild -scheme PokerChipCase-Package -destination 'generic/platform=macOS' -derivedDataPath .build/docs OTHER_DOCC_FLAGS=--warnings-as-errors -quiet
 xcodebuild build -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
+xcodebuild build-for-testing -project App/PokerChipCase.xcodeproj -scheme PokerChipCase -destination 'generic/platform=iOS Simulator' -derivedDataPath .build/app CODE_SIGNING_ALLOWED=NO -quiet
 ```
 
 Install the hooks once with `brew install pre-commit && pre-commit install` to run them on every commit. That is optional; CI runs them anyway.
 
-CI also runs a SonarCloud scan and fails on any open SonarCloud issue in the pull request. Fix it, or mark a false positive or an accepted issue in SonarCloud with a reason. Pull requests from forks get no secrets and are not scanned, so before the merge the maintainer moves a reviewed fork pull request to a branch in this repository, where SonarCloud scans it. Your commits keep you as the author.
+CI also runs a SonarCloud scan and fails on any open SonarCloud issue in the pull request. Fix it, or mark a false positive or an accepted issue in SonarCloud with a reason. Pull requests from forks get no secrets and are not scanned; [Pull requests](#pull-requests) says how they still get the scan.
 
-The libraries in `Sources/` have unit tests in `Tests/`. Add or update tests for changes there. The SwiftUI app in `App/Sources` has no unit tests; describe what you checked by hand in the simulator.
+The libraries in `Sources/` have unit tests in `Tests/`. Add or update tests for changes there. The SwiftUI app in `App/Sources` has no unit tests. `App/UITests` holds UI tests that run locally in the simulator, not in CI; the command is in [AGENTS.md](AGENTS.md). Run them if you change `App/`, and describe what you checked by hand in the simulator.
 
 ## Rules
 
@@ -51,8 +52,11 @@ The full list is in [AGENTS.md](AGENTS.md). The ones that matter most:
 
 ## Pull requests
 
+- Open your pull request against `main`.
 - Keep one topic per pull request. Small fixes are welcome.
 - Fill in the [pull request template](.github/pull_request_template.md): what and why, and how you tested it.
+- On your first pull request here, the CI runs wait until the maintainer approves them.
+- After review, the maintainer changes the target of a fork pull request to a `contrib/<number>` branch in this repository and merges it there. A pull request from that branch to `main` then gets the SonarCloud scan. Your pull request shows as merged, and your commits keep you as the author.
 
 ## AI-assisted contributions
 
