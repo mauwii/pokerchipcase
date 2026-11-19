@@ -121,15 +121,19 @@ struct RoundTable: View {
         .minimumScaleFactor(0.7)
         .padding(.horizontal, 5).padding(.vertical, 2)
         .frame(maxWidth: width)
-        // The winner tint lies over the seat fill: over a light rail alone it left light text on a light ground.
-        .background(look == .selected ? theme.accent.opacity(0.35) : .clear, in: .rect(cornerRadius: 8))
         .background(theme.seat, in: .rect(cornerRadius: 8))
+        // Glowing rails get a glowing ring; below the opaque fill, so only the outside of the glow shows and no text sits on it.
+        .background {
+            if acting, theme.rail.glow != nil {
+                RoundedRectangle(cornerRadius: 8).strokeBorder(theme.accent, lineWidth: 2)
+                    .phaseAnimator([1.0, 0.4]) { ring, opacity in ring.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.8) }
+                    .shadow(color: theme.accent, radius: 4)
+            }
+        }
         .overlay {
             if acting {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(theme.accent, lineWidth: 2)
                     .phaseAnimator([1.0, 0.4]) { ring, opacity in ring.opacity(opacity) } animation: { _ in .easeInOut(duration: 0.8) }
-                    // Glowing rails get a glowing ring.
-                    .shadow(color: theme.rail.glow == nil ? .clear : theme.accent, radius: theme.rail.glow == nil ? 0 : 4)
             } else {
                 RoundedRectangle(cornerRadius: 8).strokeBorder(
                     borderColor(look),
@@ -228,6 +232,7 @@ struct RoundTable: View {
     private var dealerDisk: some View {
         Text("D").font(.system(size: 8, weight: .black)).foregroundStyle(.black)
             .frame(width: 12, height: 12).background(.white, in: .circle)
+            .overlay(Circle().strokeBorder(.black.opacity(0.35), lineWidth: 0.5))
             .accessibilityLabel("Dealer")
     }
 

@@ -32,9 +32,6 @@ enum KnownAuditIssues {
         // Shown instead of the rows when no table is nearby; a run without nearby tables fails without it.
         KnownAuditIssue(type: .dynamicType, identifier: "nearbySearching", issue: 147),
         // Table screens (contrast only, see `tableAudit` in SweepTests.swift).
-        // Only Neon's acting seat is left: its glow lies over the seat text.
-        KnownAuditIssue(type: .contrast, identifier: "seatName", issue: 148),
-        KnownAuditIssue(type: .contrast, identifier: "seatStack", issue: 148),
         // Fails in Neon, Rubin and Royal although the pixels pass (6.5:1 and more); the audit's rule here is unknown.
         // In Neon dark it fails whatever the ink and ground: full ink on a flat room (16:1) too, and with the table or
         // the navigation bar hidden. The entry matches by identifier, so it also skips Felt, which passes today.
@@ -42,10 +39,8 @@ enum KnownAuditIssues {
         KnownAuditIssue(type: .contrast, identifier: "pot", issue: 149),
         KnownAuditIssue(type: .contrast, identifier: "quickPick", issue: 150),
         KnownAuditIssue(type: .contrast, identifier: "cardGlyph", issue: 151),
-        KnownAuditIssue(type: .contrast, identifier: "seatCards", issue: 151),
         KnownAuditIssue(type: .contrast, identifier: "winningHands", issue: 152),
         KnownAuditIssue(type: .contrast, identifier: "winners", issue: 152),
-        KnownAuditIssue(type: .contrast, identifier: "seatDelta", issue: 152),
     ]
 
     /// True when `issue`, found on `screen`, is a known finding, so the audit does not fail on it.
