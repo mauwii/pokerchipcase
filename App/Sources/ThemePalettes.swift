@@ -46,7 +46,8 @@ private extension Rail {
 /// Per sRGB channel `ink · opacity + ground · (1 − opacity)`, rounded: the opaque look of translucent ink on a ground.
 private func blend(_ ink: UInt32, over ground: UInt32, _ opacity: Double) -> UInt32 {
     [16, 8, 0].reduce(0) { result, shift in
-        let i = Double((ink >> shift) & 0xff), g = Double((ground >> shift) & 0xff)
+        let i = Double((ink >> shift) & 0xff)
+        let g = Double((ground >> shift) & 0xff)
         return result << 8 | UInt32((i * opacity + g * (1 - opacity)).rounded())
     }
 }
