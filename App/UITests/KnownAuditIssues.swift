@@ -35,8 +35,9 @@ enum KnownAuditIssues {
         // Only Neon's acting seat is left: its glow lies over the seat text.
         KnownAuditIssue(type: .contrast, identifier: "seatName", issue: 148),
         KnownAuditIssue(type: .contrast, identifier: "seatStack", issue: 148),
-        // Fails in Neon, Rubin and Royal although the pixels pass (6.5:1 and more). In Neon dark it fails whatever the
-        // ink and ground: full ink on a flat room (16:1) too, and with the table or the navigation bar hidden.
+        // Fails in Neon, Rubin and Royal although the pixels pass (6.5:1 and more); the audit's rule here is unknown.
+        // In Neon dark it fails whatever the ink and ground: full ink on a flat room (16:1) too, and with the table or
+        // the navigation bar hidden. The entry matches by identifier, so it also skips Felt, which passes today.
         KnownAuditIssue(type: .contrast, identifier: "nextLevel", issue: 149),
         KnownAuditIssue(type: .contrast, identifier: "pot", issue: 149),
         KnownAuditIssue(type: .contrast, identifier: "quickPick", issue: 150),
