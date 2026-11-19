@@ -21,7 +21,7 @@ final class StartScreenTests: XCTestCase {
         // The host save exists once the table screen is up.
         XCTAssertTrue(table.buttons["Table"].waitForExistence(timeout: 30), "table screen not shown")
         table.terminate()
-        let app = XCUIApplication.launched(playerName: "Tester", theme: "felt", appearance: "light")
+        let app = XCUIApplication.launched(playerName: "Tester", look: ("felt", "light"))
         XCTAssertTrue(app.buttons["resumeGame"].waitForExistence(timeout: 10), "saved game not offered")
         audit(app, screen: "start")
         app.attachScreenshot("start-saved-game")

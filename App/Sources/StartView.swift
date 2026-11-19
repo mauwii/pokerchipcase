@@ -96,7 +96,12 @@ struct StartView: View {
             }
         }
         #endif
-        .onAppear(perform: reload)
+        .onAppear {
+            if playerName.count > TableHost.maxNameLength {
+                playerName = String(playerName.prefix(TableHost.maxNameLength))
+            }
+            reload()
+        }
         .sheet(isPresented: $creating) {
             CreateTableSheet(defaultName: defaultTableName, busy: busy) { tableName, config in
                 host(.newTable(hostName: name, tableName: tableName, config: config))

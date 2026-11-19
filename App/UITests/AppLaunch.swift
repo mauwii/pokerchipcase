@@ -2,8 +2,9 @@ import XCTest
 
 extension XCUIApplication {
     /// Launches the app in English with the given debug launch arguments.
-    /// `theme` and `appearance` pin the look; sweeps never pass them, because a
+    /// `look` pins the theme and appearance; sweeps never pass it, because a
     /// launch argument wins over the Settings sheet.
+    /// `storedPlayerName` seeds the saved preference without overriding subsequent writes.
     @discardableResult
     static func launched(
         debugTable: Bool = false,
@@ -11,8 +12,8 @@ extension XCUIApplication {
         digitalCards: Bool = false,
         fourColorDeck: Bool = false,
         playerName: String? = nil,
-        theme: String? = nil,
-        appearance: String? = nil
+        look: (theme: String, appearance: String)? = nil,
+        storedPlayerName: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -21,9 +22,9 @@ extension XCUIApplication {
         if digitalCards { args += ["-digitalCards", "YES"] }
         if fourColorDeck { args += ["-fourColorDeck", "YES"] }
         if let playerName { args += ["-playerName", playerName] }
-        if let theme { args += ["-theme", theme] }
-        if let appearance { args += ["-appearance", appearance] }
+        if let look { args += ["-theme", look.theme, "-appearance", look.appearance] }
         app.launchArguments = args
+        if let storedPlayerName { app.launchEnvironment["POKERCHIPCASE_STORED_PLAYER_NAME"] = storedPlayerName }
         app.launch()
         return app
     }
