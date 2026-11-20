@@ -18,11 +18,8 @@ enum KnownAuditIssues {
         KnownAuditIssue(type: .dynamicType, identifier: "fourColorDeck", issue: 144),
         KnownAuditIssue(type: .dynamicType, identifier: "backPattern", issue: 144),
         KnownAuditIssue(type: .dynamicType, identifier: "backColorHeader", issue: 144),
-        KnownAuditIssue(type: .textClipped, identifier: nil, screen: "settings", issue: 145),
         // Start screen.
         KnownAuditIssue(type: .textClipped, identifier: "playerName", issue: 146),
-        KnownAuditIssue(type: .contrast, identifier: "discardGame", issue: 155),
-        KnownAuditIssue(type: .dynamicType, identifier: "discardGame", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyHeader", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyTable", issue: 147),
         // Shown instead of the rows when no table is nearby; a run without nearby tables fails without it.
