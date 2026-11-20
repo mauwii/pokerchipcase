@@ -211,6 +211,8 @@ extension Theme {
 
 extension EnvironmentValues {
     @Entry var theme: Theme = ThemeName.felt.palette(for: .light)
+    /// The window's color scheme, which `themed()` picks the palette from; a sheet's own scheme can differ.
+    @Entry var stageScheme: ColorScheme = .light
 }
 
 extension View {
@@ -252,7 +254,7 @@ private struct Themed: ViewModifier {
 
     func body(content: Content) -> some View {
         let theme = themeName.palette(for: scheme)
-        content.environment(\.theme, theme).tint(theme.formTint)
+        content.environment(\.theme, theme).environment(\.stageScheme, scheme).tint(theme.formTint)
     }
 }
 

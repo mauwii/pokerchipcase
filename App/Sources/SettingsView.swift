@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("cardFace") private var cardFace = CardFace.classic
     @AppStorage("fourColorDeck") private var fourColorDeck = false
     @Environment(\.theme) private var theme
+    @Environment(\.stageScheme) private var stageScheme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -51,7 +52,12 @@ struct SettingsView: View {
                 Section {
                     Picker("Back color", selection: $cardBack) {
                         ForEach(CardBack.allCases, id: \.self) { back in
-                            Label { Text(back.label) } icon: { CardBackView(back: back, width: 22) }.tag(back)
+                            // Not a Label: the audit judges a Label's icon with its text, and the red back fails on a dark row.
+                            HStack(spacing: 17) {
+                                CardBackView(back: back, width: 22)
+                                Text(back.label)
+                            }
+                            .tag(back)
                         }
                     }
                     .pickerStyle(.inline)
@@ -61,11 +67,26 @@ struct SettingsView: View {
                 }
                 .themedRow()
             }
+            // A menu picker keeps its old tint when the palette flips under the open sheet; rebuild it with the new one.
+            .id(theme.formTint)
             .navigationTitle("Settings")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() }.accessibilityIdentifier("settingsDone") }
+                // Without the bar's glass, Done reads in formTint on the opaque screen: the audit fails text on
+                // translucent glass whatever the pixels show (#143).
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .confirmationAction) { doneButton }.sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .confirmationAction) { doneButton }
+                }
             }
             .themedScreen()
         }
+        // A sheet keeps the scheme it opened with; the root's preferredColorScheme does not reach it while it is open (#142).
+        // Never nil: nil leaves the sheet in the scheme it had, so System passes the window's.
+        .preferredColorScheme(appearance.colorScheme ?? stageScheme)
+    }
+
+    private var doneButton: some View {
+        Button("Done") { dismiss() }.accessibilityIdentifier("settingsDone")
     }
 }

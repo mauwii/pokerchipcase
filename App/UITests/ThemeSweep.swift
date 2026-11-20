@@ -23,6 +23,7 @@ extension XCUIApplication {
         }
         openSettings()
         pick(theme: "Felt", brightness: "System", on: screen)
+        if auditsSettings { audit(self, screen: "settings") }
         closeSettings(on: screen)
     }
 
