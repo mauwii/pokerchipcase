@@ -25,13 +25,18 @@ struct ActionBar: View {
                 Slider(
                     value: Binding(get: { Double(min(max(raiseTo, lo), hi)) }, set: { raiseTo = Int($0) }),
                     in: Double(lo)...Double(hi), step: Double(max(1, state.currentLevel.smallBlind)))
+                // The system track is a faint translucent gray (about 1.3:1 on the room); this line under it, matched
+                // to the iOS 27 track (6 pt, full width), gives it the 3:1 of WCAG 1.4.11.
+                .background(Capsule().fill(theme.muted).frame(height: 6))
                 HStack {
                     ForEach(quickPicks, id: \.kind) { pick in
                         Button { raiseTo = pick.raiseTo } label: {
                             Text("\(label(pick.kind)) \(pick.raiseTo)")
                                 .font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
+                                .foregroundStyle(theme.seatText)
                                 .frame(maxWidth: .infinity).padding(.vertical, 6)
-                                .overlay(Capsule().strokeBorder(theme.muted))
+                                .background(theme.seat, in: Capsule())
+                                .overlay(Capsule().strokeBorder(theme.seatBorder))
                                 .contentShape(Capsule())
                         }
                         .accessibilityIdentifier("quickPick")
