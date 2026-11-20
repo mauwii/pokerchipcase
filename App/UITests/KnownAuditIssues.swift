@@ -13,16 +13,15 @@ struct KnownAuditIssue {
 
 enum KnownAuditIssues {
     static let all: [KnownAuditIssue] = [
-        // Settings sheet, audited in the start-screen sweep.
+        // Start screen.
+        KnownAuditIssue(type: .textClipped, identifier: "playerName", issue: 146),
+        // Not app-fixable: these texts use text styles and scale; the audit reports elements that a larger size pushes off screen, and the navigation bar caps Done (Large Content Viewer). Evidence in #144 and #147.
         KnownAuditIssue(type: .dynamicType, identifier: "settingsDone", issue: 144),
         KnownAuditIssue(type: .dynamicType, identifier: "fourColorDeck", issue: 144),
         KnownAuditIssue(type: .dynamicType, identifier: "backPattern", issue: 144),
         KnownAuditIssue(type: .dynamicType, identifier: "backColorHeader", issue: 144),
-        // Start screen.
-        KnownAuditIssue(type: .textClipped, identifier: "playerName", issue: 146),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyHeader", issue: 147),
         KnownAuditIssue(type: .dynamicType, identifier: "nearbyTable", issue: 147),
-        // Shown instead of the rows when no table is nearby; a run without nearby tables fails without it.
         KnownAuditIssue(type: .dynamicType, identifier: "nearbySearching", issue: 147),
         // Table screens (contrast only, see `tableAudit` in SweepTests.swift).
         // Fails in Neon, Rubin and Royal although the pixels pass (6.5:1 and more); the audit's rule here is unknown.
