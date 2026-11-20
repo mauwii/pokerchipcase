@@ -133,9 +133,19 @@ struct CardFaceView: View {
             }
             .padding(.top, height * m.top).padding(.leading, width * m.left)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            glyph(card.symbol, size: width * m.big).opacity(m.bigOpacity)
-                .padding(.trailing, width * m.right).padding(.bottom, height * m.bottom)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            if m.bigOpacity < 1 {
+                // Drawn, not a Text: decoration, which the contrast audit would judge as text (#151).
+                Canvas { context, size in
+                    let suit = Text(card.symbol).font(.system(size: width * m.big, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(m.bigOpacity))
+                    context.draw(suit, at: CGPoint(x: size.width - width * m.right, y: size.height - height * m.bottom),
+                                 anchor: .bottomTrailing)
+                }
+            } else {
+                glyph(card.symbol, size: width * m.big)
+                    .padding(.trailing, width * m.right).padding(.bottom, height * m.bottom)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
         }
     }
 
@@ -149,13 +159,13 @@ struct CardFaceView: View {
     /// the hearts fill and clubs the spades fill.
     private var solidFill: LinearGradient {
         let spades: (UInt32, UInt32) = (0x3a3f4b, 0x16181d)
-        let hearts: (UInt32, UInt32) = (0xe0584a, 0xa82a1f)
+        let hearts: (UInt32, UInt32) = (0xd53524, 0xa82a1f)
         let stops =
             switch card.suit {
             case .spades: spades
             case .hearts: hearts
-            case .diamonds: fourColor ? (0x4a8be0, 0x1f4e9c) : hearts
-            case .clubs: fourColor ? (0x3fb06a, 0x1b6f3c) : spades
+            case .diamonds: fourColor ? (0x2470d3, 0x1f4e9c) : hearts
+            case .clubs: fourColor ? (0x2e814e, 0x1b6f3c) : spades
             }
         // CSS 160°: down and slightly to the right.
         return LinearGradient(colors: [Color(hex: stops.0), Color(hex: stops.1)],
