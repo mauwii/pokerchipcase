@@ -102,7 +102,7 @@ struct CardBackView: View {
                     Canvas { context, size in
                         let letter = Text(CardBackPattern.monogram(playerName) ?? "♠")
                             .font(.system(size: width * 0.5, weight: .bold, design: .serif))
-                            .foregroundColor(monogramGold)
+                            .foregroundStyle(monogramGold)
                         context.draw(letter, at: CGPoint(x: size.width / 2, y: size.height / 2))
                     }
                 }

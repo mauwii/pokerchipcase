@@ -137,7 +137,7 @@ struct CardFaceView: View {
                 // Drawn, not a Text: decoration, which the contrast audit would judge as text (#151).
                 Canvas { context, size in
                     let suit = Text(card.symbol).font(.system(size: width * m.big, weight: .bold, design: .rounded))
-                        .foregroundColor(.white.opacity(m.bigOpacity))
+                        .foregroundStyle(.white.opacity(m.bigOpacity))
                     context.draw(suit, at: CGPoint(x: size.width - width * m.right, y: size.height - height * m.bottom),
                                  anchor: .bottomTrailing)
                 }
