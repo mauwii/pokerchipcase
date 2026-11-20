@@ -98,11 +98,13 @@ struct CardBackView: View {
                                    .init(color: .black.opacity(0.25), location: 1)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
                 .overlay {
-                    Text(CardBackPattern.monogram(playerName) ?? "♠")
-                        .font(.system(size: width * 0.5, weight: .bold, design: .serif))
-                        .lineLimit(1).minimumScaleFactor(0.4)
-                        .foregroundStyle(monogramGold)
-                        .padding(width * 0.06)
+                    // Drawn, not a Text: decoration, which the contrast audit would judge as text (#151).
+                    Canvas { context, size in
+                        let letter = Text(CardBackPattern.monogram(playerName) ?? "♠")
+                            .font(.system(size: width * 0.5, weight: .bold, design: .serif))
+                            .foregroundStyle(monogramGold)
+                        context.draw(letter, at: CGPoint(x: size.width / 2, y: size.height / 2))
+                    }
                 }
         }
     }

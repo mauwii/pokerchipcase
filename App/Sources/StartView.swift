@@ -48,11 +48,11 @@ struct StartView: View {
                             }
                         }
                         .accessibilityIdentifier("resumeGame")
-                        Button("Discard", role: .destructive) { discard(SaveFile.host) }.accessibilityIdentifier("discardGame")
+                        Button("Discard", role: .destructive) { discard(SaveFile.host) }.foregroundStyle(theme.red).accessibilityIdentifier("discardGame")
                     }
                     if let ticket {
                         Button("Rejoin \(ticket.tableName)") { rejoin(ticket) }
-                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }
+                        Button("Discard", role: .destructive) { discard(SaveFile.seat) }.foregroundStyle(theme.red)
                     }
                     Button("Create table") { if savedGame == nil { creating = true } else { confirmDiscard = true } }
                 }
